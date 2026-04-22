@@ -400,23 +400,36 @@ a {
 }
 
 .tabs {
-  position: sticky;
-  top: 0;
+  position: relative;
   z-index: 10;
   display: flex;
+  flex-wrap: wrap;
   gap: 4px;
-  padding: 14px 0;
-  background: rgba(251, 250, 244, 0.9);
-  backdrop-filter: blur(10px);
+  align-items: center;
+  margin: 16px 0 18px;
+  padding: 8px;
+  background: rgba(255, 255, 251, 0.72);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--tight-shadow);
+}
+
+.tabs > span {
+  margin: 0 8px 0 4px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
 .tab-button {
-  min-height: 44px;
-  padding: 10px 14px;
+  min-height: 38px;
+  padding: 8px 12px;
   color: var(--muted);
   background: var(--paper);
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: 8px;
   font-weight: 750;
   box-shadow: 0 1px 0 rgba(17, 23, 19, 0.04);
 }
@@ -2356,9 +2369,15 @@ a {
 
   .tabs {
     overflow-x: auto;
+    flex-wrap: nowrap;
+    margin: 12px 0 14px;
   }
 
   .tab-button {
+    white-space: nowrap;
+  }
+
+  .tabs > span {
     white-space: nowrap;
   }
 
