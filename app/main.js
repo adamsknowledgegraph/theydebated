@@ -831,15 +831,32 @@ async function hydrateSubmittedSources() {
 }
 
 function setupTabs() {
-  document.querySelectorAll(".tab-button").forEach((button) => {
+  const tabButtons = Array.from(document.querySelectorAll(".tab-button"));
+  const tabPanels = Array.from(document.querySelectorAll(".tab-panel"));
+  const tabIds = new Set(tabPanels.map((panel) => panel.id));
+
+  function activateTab(tab, updateHash = true) {
+    if (!tabIds.has(tab)) return;
+    tabButtons.forEach((candidate) => candidate.classList.toggle("active", candidate.dataset.tab === tab));
+    tabPanels.forEach((candidate) => candidate.classList.toggle("active", candidate.id === tab));
+    if (updateHash && window.location.hash !== `#${tab}`) {
+      history.replaceState(null, "", `#${tab}`);
+    }
+  }
+
+  tabButtons.forEach((button) => {
     button.addEventListener("click", () => {
-      const tab = button.dataset.tab;
-      document.querySelectorAll(".tab-button").forEach((candidate) => candidate.classList.remove("active"));
-      document.querySelectorAll(".tab-panel").forEach((candidate) => candidate.classList.remove("active"));
-      button.classList.add("active");
-      document.querySelector(`#${tab}`).classList.add("active");
+      activateTab(button.dataset.tab);
     });
   });
+
+  function activateHashTab() {
+    const tab = window.location.hash.replace("#", "");
+    if (tabIds.has(tab)) activateTab(tab, false);
+  }
+
+  activateHashTab();
+  window.addEventListener("hashchange", activateHashTab);
 }
 
 function setupSearch() {
