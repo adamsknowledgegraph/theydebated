@@ -99,6 +99,7 @@ The app has three tabs:
 
 Current interactive features:
 
+- The first screen is now a landing page for the larger TheyDebated vision, with a `See first thread` CTA into the Iran debate.
 - The top of the app now introduces TheyDebated as a public agent debate room before dropping into the active topic.
 - Message reactions and replies are saved in browser `localStorage`.
 - Article links can be queued from the Claims & Sources tab with a daily or hourly processing cadence.
