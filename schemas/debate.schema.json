@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://debatebook.local/schemas/debate.schema.json",
+  "title": "Debatebook Debate Config",
+  "type": "object",
+  "required": [
+    "id",
+    "title",
+    "status",
+    "core_question",
+    "agents",
+    "verdict_criteria",
+    "debate_flow"
+  ],
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "status": {
+      "enum": ["draft", "active", "complete", "archived"]
+    },
+    "assumed_scope": {
+      "type": "string"
+    },
+    "core_question": {
+      "type": "string"
+    },
+    "subquestions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "agents": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "required": ["id", "role", "identity_prompt_file"],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "identity_prompt_file": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "verdict_criteria": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "question", "weight"],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "question": {
+            "type": "string"
+          },
+          "weight": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        }
+      }
+    },
+    "debate_flow": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "owner"],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "owner": {
+            "type": "string"
+          },
+          "output": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "source_seed": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["title", "url", "source_type"],
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "source_type": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,152 @@
+{
+  "id": "iran-war-2026",
+  "title": "Iran War, Negotiations, and Ceasefire",
+  "status": "draft",
+  "assumed_scope": "Active 2026 U.S.-Iran conflict, including the February 28, 2026 U.S./Israel strikes, April 2026 ceasefire and negotiations, and relevant 2025 nuclear-strike context.",
+  "core_question": "Was the U.S. decision to launch or escalate war against Iran in 2026, and then negotiate from the resulting ceasefire posture, a net-good or net-bad decision compared with plausible alternatives available at the time?",
+  "subquestions": [
+    "Was the threat from Iran urgent enough to justify war at that moment?",
+    "Were negotiations still viable when the war began?",
+    "Did military action verifiably reduce Iran's nuclear or military threat?",
+    "Did the war improve or damage regional stability and shipping security?",
+    "Were the casualties, economic costs, and escalation risks proportionate?",
+    "Was the action lawful and democratically authorized?",
+    "Did the ceasefire and negotiation posture produce a better path than alternatives?"
+  ],
+  "agents": [
+    {
+      "id": "arbiter",
+      "role": "truth_arbiter",
+      "identity_prompt_file": "../../agents/truth-arbiter-investigative-journalist.md"
+    },
+    {
+      "id": "republican_advocate",
+      "role": "pro_decision_advocate",
+      "identity_prompt_file": "../../agents/republican-coalition-advocate.md"
+    },
+    {
+      "id": "democratic_advocate",
+      "role": "anti_decision_advocate",
+      "identity_prompt_file": "../../agents/democratic-opposition-advocate.md"
+    }
+  ],
+  "verdict_criteria": [
+    {
+      "id": "nuclear_risk",
+      "question": "Did the decision reduce nuclear-weapons risk more than plausible alternatives?",
+      "weight": 0.18
+    },
+    {
+      "id": "military_security",
+      "question": "Did it materially reduce Iranian military threats to the U.S., Israel, Gulf partners, and shipping?",
+      "weight": 0.16
+    },
+    {
+      "id": "diplomatic_path",
+      "question": "Did it improve or damage the chance of a durable negotiated outcome?",
+      "weight": 0.16
+    },
+    {
+      "id": "human_cost",
+      "question": "Were military and civilian casualties proportionate to the security gains?",
+      "weight": 0.14
+    },
+    {
+      "id": "economic_cost",
+      "question": "Were energy, shipping, inflation, and trade effects acceptable and temporary?",
+      "weight": 0.12
+    },
+    {
+      "id": "legality",
+      "question": "Was the action legally and constitutionally justified?",
+      "weight": 0.12
+    },
+    {
+      "id": "long_term_strategy",
+      "question": "Did the decision leave the U.S. and region in a strategically better position over the long term?",
+      "weight": 0.12
+    }
+  ],
+  "debate_flow": [
+    {
+      "id": "source_refresh",
+      "name": "Refresh sources",
+      "owner": "arbiter",
+      "output": "dated evidence packet"
+    },
+    {
+      "id": "identity_disclosure",
+      "name": "Display identity prompts",
+      "owner": "all",
+      "output": "public agent identities"
+    },
+    {
+      "id": "opening_cases",
+      "name": "Opening cases",
+      "owner": "advocates",
+      "output": "best initial argument from each side"
+    },
+    {
+      "id": "claim_extraction",
+      "name": "Extract claims",
+      "owner": "arbiter",
+      "output": "fact ledger"
+    },
+    {
+      "id": "cross_exam",
+      "name": "Cross-examination",
+      "owner": "advocates",
+      "output": "questions and concessions"
+    },
+    {
+      "id": "arbiter_corrections",
+      "name": "Corrections and uncertainty",
+      "owner": "arbiter",
+      "output": "verified, contested, unsupported, false, and unresolved claims"
+    },
+    {
+      "id": "revised_cases",
+      "name": "Revised cases",
+      "owner": "advocates",
+      "output": "arguments after corrections"
+    },
+    {
+      "id": "provisional_verdict",
+      "name": "Provisional verdict",
+      "owner": "arbiter",
+      "output": "weighted answer, confidence, and research queue"
+    }
+  ],
+  "source_seed": [
+    {
+      "title": "AP: Iran fires on ships in the Strait of Hormuz as ceasefire talks falter",
+      "url": "https://apnews.com/article/us-iran-war-hormuz-israel-pakistan-ceasefire-april-22-2026-267230f7f32b436822484479313840f7",
+      "source_type": "straight_news",
+      "notes": "Current reporting on shipping attacks, ceasefire extension, blockade, and economic effects."
+    },
+    {
+      "title": "White House: Operation Epic Fury and ceasefire statement",
+      "url": "https://www.whitehouse.gov/releases/2026/04/peace-through-strength-operation-epic-fury-crushes-iranian-threat-as-ceasefire-takes-hold/",
+      "source_type": "official_administration",
+      "notes": "Administration case for the operation and claimed military results."
+    },
+    {
+      "title": "House Foreign Affairs Democrats: Meeks statement on U.S.-Iran ceasefire",
+      "url": "https://democrats-foreignaffairs.house.gov/2026/4/meeks-issues-statement-on-u-s-iran-ceasefire",
+      "source_type": "official_opposition",
+      "notes": "Democratic critique emphasizing durable diplomacy, cost, and congressional accountability."
+    },
+    {
+      "title": "House Foreign Affairs Democrats: War Powers floor remarks",
+      "url": "https://democrats-foreignaffairs.house.gov/2026/4/meeks-delivers-remarks-during-floor-debate-on-iran-war-powers-resolution",
+      "source_type": "official_opposition",
+      "notes": "War-powers argument and claim that diplomacy was ongoing when the war began."
+    },
+    {
+      "title": "IAEA: June 23, 2025 statement on nuclear-site damage and inspections",
+      "url": "https://www.iaea.org/newscenter/statements/iaea-director-generals-introductory-statement-to-the-board-of-governors-23-june-2025",
+      "source_type": "technical_primary",
+      "notes": "Technical baseline for nuclear-site damage, inspection needs, and limits of assessment."
+    }
+  ]
+}
