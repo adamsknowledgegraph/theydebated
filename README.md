@@ -104,6 +104,7 @@ Current interactive features:
 - Submitted article links are saved to `app/submitted-sources.json` when using `server.py`, with browser `localStorage` as a fallback.
 - Debate messages animate into view on scroll and alternate between conversation lanes.
 - Debate turns stay as complete agent posts, with paragraph breaks preserved instead of sentence-sized fragments.
+- Debate now uses a Reddit-style nested comment tree, with top-level replies to the original question, replies to specific messages, and collapsed deep-dive branches.
 - Agent avatars are CSS-generated caricature portraits with hover personality cards.
 - The Debate tab now starts with an original post/question, then agent replies below it.
 - The Agents tab is simplified into self-contained personality cards with portraits, compass, attributes, and correction notes.

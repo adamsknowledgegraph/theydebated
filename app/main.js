@@ -190,16 +190,27 @@ function setupScrollReveal() {
 
 function getConversationTurns() {
   if (conversationTurns) return conversationTurns;
+  const roundById = new Map(data.debateRounds.map((round) => [round.id, round]));
+
+  function depthFor(round, seen = new Set()) {
+    if (!round.replyTo || round.replyTo === "OP" || seen.has(round.id)) return 0;
+    const parent = roundById.get(round.replyTo);
+    if (!parent) return 0;
+    return Math.min(depthFor(parent, new Set([...seen, round.id])) + 1, 3);
+  }
+
   conversationTurns = data.debateRounds.map((round, index) => {
-    const previous = data.debateRounds[index - 1];
+    const parent = round.replyTo && round.replyTo !== "OP" ? roundById.get(round.replyTo) : null;
+    const parentAgent = parent ? agentById.get(parent.speakerId) : null;
+    const parentContext = parent
+      ? `replying to ${parentAgent?.initials || "agent"}: ${parent.title}`
+      : "top-level reply to original question";
     return {
       ...round,
       parentId: round.id,
-      isFollowup: false,
-      replyContext:
-        previous && previous.speakerId !== round.speakerId
-          ? `replying to ${agentById.get(previous.speakerId)?.initials || "agent"}`
-          : ""
+      depth: depthFor(round),
+      isFollowup: Boolean(parent),
+      replyContext: round.replyContext || parentContext
     };
   });
   return conversationTurns;
@@ -323,9 +334,11 @@ function renderDebate() {
   list.replaceChildren(
     ...turns.map((round, index) => {
       const agent = agentById.get(round.speakerId);
-      const card = create("article", `round-card${round.isFollowup ? " followup" : ""}`);
+      const card = create("article", `round-card${round.isFollowup ? " nested-comment" : ""}`);
       card.dataset.speaker = round.speakerId;
-      card.dataset.side = round.speakerId === "republican" ? "right" : round.speakerId === "arbiter" ? "mod" : "left";
+      card.dataset.depth = String(round.depth || 0);
+      card.style.setProperty("--thread-indent", `${(round.depth || 0) * 36}px`);
+      card.style.setProperty("--thread-indent-mobile", `${(round.depth || 0) * 16}px`);
       const avatarColumn = create("div", "thread-avatar-column");
       const avatar = agent ? agentPortrait(agent) : create("div", "avatar", "?");
       const vote = create("div", "thread-vote");
@@ -344,7 +357,7 @@ function renderDebate() {
       meta.append(
         create("strong", "thread-handle", handles[round.speakerId] || "u/unknown-agent"),
         create("span", "thread-flair", flairs[round.speakerId] || "agent"),
-        create("span", "", `turn ${index + 1}`),
+        create("span", "", round.isFollowup ? `reply ${index + 1}` : `comment ${index + 1}`),
         create("span", "", `${round.claimIds.length} receipts`)
       );
       const label = create("span", "round-label", round.label);
@@ -448,7 +461,19 @@ function renderDebate() {
 
       if (replies.length) replyStack.append(replyList);
       replyStack.append(composer);
-      threadBody.append(bubble, sourceReceiptButton(round.claimIds), reactionBar, replyStack);
+      if (round.collapsed) {
+        const collapsedThread = create("details", "thread-collapse");
+        const summary = create("summary");
+        summary.append(
+          create("span", "deep-tag", round.collapseLabel || "deep dive"),
+          create("strong", "", round.title),
+          create("span", "", round.teaser || `${round.claimIds.length} receipts attached`)
+        );
+        collapsedThread.append(summary, bubble, sourceReceiptButton(round.claimIds), reactionBar, replyStack);
+        threadBody.append(collapsedThread);
+      } else {
+        threadBody.append(bubble, sourceReceiptButton(round.claimIds), reactionBar, replyStack);
+      }
       card.append(avatarColumn, threadBody);
       return card;
     })
