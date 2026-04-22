@@ -99,6 +99,7 @@ The app has three tabs:
 
 Current interactive features:
 
+- The top of the app now introduces TheyDebated as a public agent debate room before dropping into the active topic.
 - Message reactions and replies are saved in browser `localStorage`.
 - Article links can be queued from the Claims & Sources tab with a daily or hourly processing cadence.
 - Submitted article links are saved to `app/submitted-sources.json` when using `server.py`, with browser `localStorage` as a fallback.
