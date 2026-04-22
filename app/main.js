@@ -190,41 +190,29 @@ function setupScrollReveal() {
 
 function getConversationTurns() {
   if (conversationTurns) return conversationTurns;
-  const turns = [];
-  data.debateRounds.forEach((round) => {
-    const sentences = round.body
-      .split(/(?<=[.!?])\s+/)
-      .map((sentence) => sentence.trim())
-      .filter(Boolean);
-    const chunks = sentences.length > 1 ? sentences : [round.body];
-    chunks.forEach((chunk, index) => {
-      turns.push({
-        ...round,
-        id: `${round.id}-${index + 1}`,
-        parentId: round.id,
-        body: chunk,
-        title: index === 0 ? round.title : "",
-        label: index === 0 ? round.label : "reply",
-        claimIds: index === 0 ? round.claimIds.slice(0, Math.ceil(round.claimIds.length / 2)) : round.claimIds.slice(Math.ceil(round.claimIds.length / 2)),
-        isFollowup: index > 0
-      });
-    });
-  });
-  conversationTurns = turns.map((turn) => ({
-    ...turn,
-    claimIds: turn.claimIds.length ? turn.claimIds : data.debateRounds.find((round) => round.id === turn.parentId)?.claimIds.slice(0, 2) || []
-  }));
-  conversationTurns = conversationTurns.map((turn, index) => {
-    const previous = conversationTurns[index - 1];
+  conversationTurns = data.debateRounds.map((round, index) => {
+    const previous = data.debateRounds[index - 1];
     return {
-      ...turn,
+      ...round,
+      parentId: round.id,
+      isFollowup: false,
       replyContext:
-        previous && previous.speakerId !== turn.speakerId
+        previous && previous.speakerId !== round.speakerId
           ? `replying to ${agentById.get(previous.speakerId)?.initials || "agent"}`
           : ""
     };
   });
   return conversationTurns;
+}
+
+function messageParagraphs(bodyText) {
+  const wrapper = create("div", "message-paragraphs");
+  text(bodyText)
+    .split(/\n{2,}/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean)
+    .forEach((paragraph) => wrapper.append(create("p", "", paragraph)));
+  return wrapper;
 }
 
 function miniChip(label, status) {
@@ -362,7 +350,7 @@ function renderDebate() {
       const label = create("span", "round-label", round.label);
       const title = round.title ? create("h3", "", round.title) : null;
       const replyContext = round.replyContext ? create("span", "reply-context", round.replyContext) : null;
-      const body = create("p", "", round.body);
+      const body = messageParagraphs(round.body);
       const actions = create("div", "thread-actions");
       bubble.append(meta, label);
       if (replyContext) bubble.append(replyContext);

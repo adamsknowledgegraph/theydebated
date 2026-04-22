@@ -481,6 +481,15 @@ a {
   box-shadow: var(--tight-shadow);
 }
 
+.message-paragraphs {
+  display: grid;
+  gap: 12px;
+}
+
+.message-paragraphs p {
+  margin: 0;
+}
+
 .thread-bubble::before {
   content: "";
   position: absolute;
