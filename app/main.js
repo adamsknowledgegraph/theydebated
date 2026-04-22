@@ -509,15 +509,16 @@ function renderAgents() {
       const cardBody = create("div", "agent-card-body");
       cardBody.append(
         create("p", "section-kicker", `${agent.initials} / ${agent.roleTitle}`),
-        create("h3", "", agent.personaName),
+        create("h3", "", agent.displayName || agent.personaName),
+        create("p", "agent-real-name", agent.personaName),
+        create("p", "agent-alias", agent.alias),
         create("p", "agent-one-line", agent.oneLine),
-        create("p", "agent-belief", agent.coreBelief)
+        create("blockquote", "agent-belief", agent.coreBelief)
       );
 
       const attributes = create("div", "attribute-grid");
       [
         ["Archetype", agent.archetype],
-        ["Catchphrase", agent.catchphrases?.[0]],
         ["Source diet", agent.sourceDiet.slice(0, 2).join(" + ")],
         ["Debate style", agent.debateStyle],
         ["Blind spot", agent.blindSpots[0]],

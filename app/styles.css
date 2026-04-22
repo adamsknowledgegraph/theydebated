@@ -1677,9 +1677,27 @@ a {
 }
 
 .agent-card-body h3 {
+  margin-bottom: 4px;
   font-size: 1.7rem;
   line-height: 1.05;
   letter-spacing: -0.04em;
+}
+
+.agent-real-name {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.agent-alias {
+  margin: 10px 0 0;
+  color: var(--ink);
+  font-size: 0.92rem;
+  font-weight: 780;
+  line-height: 1.45;
 }
 
 .agent-one-line {
@@ -1688,13 +1706,31 @@ a {
 
 .agent-belief {
   margin: 10px 0 0;
-  padding: 10px;
+  padding: 12px 12px 12px 34px;
   color: rgba(17, 23, 19, 0.84);
   background: rgba(255, 255, 251, 0.64);
   border: 1px solid var(--line);
   border-radius: 8px;
   font-size: 0.92rem;
+  font-style: italic;
   line-height: 1.45;
+  position: relative;
+}
+
+.agent-belief::before {
+  content: "\201C";
+  position: absolute;
+  left: 10px;
+  top: 4px;
+  color: currentColor;
+  font-size: 2rem;
+  font-style: normal;
+  line-height: 1;
+  opacity: 0.48;
+}
+
+.agent-belief::after {
+  content: "\201D";
 }
 
 .attribute-grid {
@@ -1727,13 +1763,12 @@ a {
   line-height: 1.35;
 }
 
-.attribute-card:nth-child(1),
-.attribute-card:nth-child(2) {
+.attribute-card:nth-child(1) {
   background: rgba(232, 240, 231, 0.76);
 }
 
-.attribute-card:nth-child(3),
-.attribute-card:nth-child(4) {
+.attribute-card:nth-child(2),
+.attribute-card:nth-child(3) {
   background: rgba(243, 236, 213, 0.78);
 }
 

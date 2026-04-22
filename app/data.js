@@ -32,6 +32,9 @@ window.debatebook = {
       oneLine:
         "A document-sniffing moderator who treats every slogan like it just failed airport security.",
       personaName: "Mara Vale",
+      displayName: "Mara Veri-Vale",
+      alias:
+        "The Verify-Vale: a valley of receipts where slogans go to get fact-checked.",
       roleTitle: "Investigative moderator",
       archetype: "The document hawk",
       coreBelief:
@@ -82,6 +85,9 @@ window.debatebook = {
       oneLine:
         "A maximum-pressure hawk: if Iran has near-bomb material, the clock is the argument.",
       personaName: "Cal Rourke",
+      displayName: "Cal 'Clockwork' Rourke",
+      alias:
+        "The Rourke Doctrine: if the clock is ticking, leverage should be louder than patience.",
       roleTitle: "Maximum-pressure advocate",
       archetype: "The red-team hawk",
       coreBelief:
@@ -132,6 +138,9 @@ window.debatebook = {
       oneLine:
         "A diplomacy-and-legality critic: yes, enrichment is scary, but evidence still has to do the work.",
       personaName: "Nadia Cross",
+      displayName: "Nadia Cross-Exam",
+      alias:
+        "The Cross-Examiner: process hawk, war-powers scold, and professional ambiguity splitter.",
       roleTitle: "Diplomacy and legality critic",
       archetype: "The process realist",
       coreBelief:
