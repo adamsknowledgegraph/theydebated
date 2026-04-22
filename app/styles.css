@@ -437,10 +437,10 @@ a {
 
 .thread-op {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(290px, 390px);
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
   gap: 18px;
   margin-top: 18px;
-  padding: 26px;
+  padding: 22px;
   background: var(--paper);
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -467,7 +467,7 @@ a {
 
 .thread-op-copy {
   display: grid;
-  gap: 18px;
+  gap: 14px;
   align-content: start;
 }
 
@@ -497,15 +497,13 @@ a {
   font-size: 1.02rem;
 }
 
-.thread-op-topline,
-.thread-op-footer {
+.thread-op-topline {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 
-.thread-op-topline span,
-.thread-op-footer span {
+.thread-op-topline span {
   display: inline-flex;
   min-height: 28px;
   align-items: center;
@@ -518,191 +516,112 @@ a {
   font-weight: 840;
 }
 
-.fact-grid {
+.topic-infographic {
+  align-self: stretch;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
-}
-
-.fact-card {
-  min-height: 132px;
-  padding: 16px;
-  background: var(--soft-green);
+  padding: 14px;
+  background: rgba(255, 255, 251, 0.74);
   border: 1px solid var(--line);
   border-radius: 8px;
+  box-shadow: 0 10px 26px rgba(17, 23, 19, 0.08);
   position: relative;
-}
-
-.fact-card:nth-child(2) {
-  background: var(--soft-blue);
-}
-
-.fact-card:nth-child(3) {
-  background: #f3ecd5;
-}
-
-.fact-card:nth-child(4) {
-  background: #eee9fb;
-}
-
-.fact-card strong {
-  display: block;
-  font-size: 1.75rem;
-  line-height: 1.05;
-  letter-spacing: -0.04em;
-}
-
-.fact-card span {
-  display: block;
-  margin-top: 8px;
-  color: var(--muted);
-  line-height: 1.45;
-}
-
-.subject-graphic {
-  position: relative;
-  min-height: 420px;
   overflow: hidden;
-  background:
-    linear-gradient(180deg, rgba(214, 235, 232, 0.98), rgba(255, 248, 213, 0.88) 54%, rgba(239, 234, 223, 0.94)),
-    var(--paper-strong);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 251, 0.6), 0 16px 36px rgba(17, 23, 19, 0.1);
 }
 
-.subject-graphic::after {
+.topic-infographic::before {
   content: "";
   position: absolute;
   inset: 0;
-  pointer-events: none;
   background:
-    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.13) 0 1px, transparent 1px 4px),
-    repeating-linear-gradient(0deg, rgba(17, 23, 19, 0.04) 0 1px, transparent 1px 6px);
+    linear-gradient(145deg, rgba(133, 195, 176, 0.18), transparent 44%, rgba(245, 130, 92, 0.13)),
+    repeating-linear-gradient(90deg, rgba(17, 23, 19, 0.035) 0 1px, transparent 1px 5px);
   mix-blend-mode: soft-light;
+  pointer-events: none;
 }
 
-.subject-sky {
-  position: absolute;
-  inset: 0 0 46%;
-  background:
-    linear-gradient(145deg, rgba(133, 195, 176, 0.28), transparent 42%),
-    linear-gradient(220deg, rgba(245, 130, 92, 0.2), transparent 44%);
+.topic-infographic > * {
+  position: relative;
+  z-index: 1;
 }
 
-.enrichment-ladder {
-  position: absolute;
-  left: 22px;
-  right: 22px;
-  bottom: 92px;
+.topic-infographic-title {
   display: grid;
-  gap: 12px;
+  gap: 2px;
+  padding: 12px;
+  color: var(--paper-strong);
+  background: rgba(17, 23, 19, 0.9);
+  border-radius: 8px;
 }
 
-.ladder-step {
+.topic-infographic-title strong {
+  font-size: 1.35rem;
+  letter-spacing: -0.03em;
+}
+
+.topic-infographic-title span {
+  color: rgba(255, 255, 251, 0.72);
+  font-size: 0.82rem;
+  font-weight: 760;
+}
+
+.mini-ladder {
   display: grid;
-  grid-template-columns: 64px minmax(0, 1fr);
-  align-items: center;
-  gap: 10px;
-  min-height: 48px;
-  padding: 8px 10px;
+  gap: 9px;
+}
+
+.mini-ladder-row {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: 6px 10px;
+  align-items: baseline;
+  padding: 10px;
   background: rgba(255, 255, 251, 0.88);
   border: 1px solid var(--line);
   border-radius: 8px;
-  box-shadow: 0 8px 20px rgba(17, 23, 19, 0.08);
 }
 
-.ladder-step::after {
-  content: "";
-  grid-column: 1 / -1;
-  height: 8px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, var(--teal), var(--gold), var(--red));
-}
-
-.ladder-step span {
+.mini-ladder-row span {
   color: var(--ink);
   font-size: 1.25rem;
   font-weight: 900;
   letter-spacing: -0.03em;
 }
 
-.ladder-step strong {
+.mini-ladder-row strong {
   color: var(--muted);
-  font-size: 0.76rem;
-  letter-spacing: 0.08em;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
-.step-civilian {
-  width: 58%;
+.mini-ladder-row i {
+  grid-column: 1 / -1;
+  display: block;
+  width: var(--fill);
+  height: 8px;
+  background: linear-gradient(90deg, var(--teal), var(--gold), var(--red));
+  border-radius: 999px;
 }
 
-.step-civilian::after {
-  width: 28%;
+.mini-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
 }
 
-.step-sixty {
-  width: 82%;
-}
-
-.step-sixty::after {
-  width: 66%;
-}
-
-.step-weapon {
-  width: 100%;
-}
-
-.step-weapon::after {
-  width: 92%;
-}
-
-.negotiation-strip {
-  position: absolute;
-  left: 22px;
-  right: 22px;
-  bottom: 24px;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.negotiation-strip span {
-  min-height: 34px;
-  padding: 8px 6px;
+.mini-facts span {
+  min-height: 28px;
+  padding: 6px 8px;
   color: var(--ink);
-  background: rgba(255, 255, 251, 0.78);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  font-size: 0.7rem;
-  font-weight: 850;
-  text-align: center;
+  background: rgba(232, 240, 231, 0.76);
+  border: 1px solid rgba(17, 23, 19, 0.1);
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-}
-
-.evidence-note {
-  position: absolute;
-  top: 24px;
-  left: 22px;
-  right: 22px;
-  display: grid;
-  gap: 4px;
-  padding: 14px;
-  color: var(--paper-strong);
-  background: rgba(17, 23, 19, 0.86);
-  border-radius: 8px;
-  box-shadow: 0 12px 26px rgba(17, 23, 19, 0.16);
-}
-
-.evidence-note strong {
-  font-size: 1.28rem;
-  letter-spacing: -0.03em;
-}
-
-.evidence-note span {
-  color: rgba(255, 255, 251, 0.78);
-  font-size: 0.82rem;
 }
 
 .debate-layout {
@@ -2478,11 +2397,6 @@ a {
     padding: 18px;
   }
 
-  .subject-graphic {
-    min-height: 390px;
-  }
-
-  .fact-grid,
   .status-strip {
     grid-template-columns: 1fr;
   }

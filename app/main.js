@@ -295,17 +295,6 @@ function renderHeader() {
   document.querySelector("#refresh-date").textContent = data.meta.refreshDate;
 }
 
-function renderFactGrid() {
-  const grid = document.querySelector("#fact-grid");
-  grid.replaceChildren(
-    ...data.meta.factCards.map((fact) => {
-      const card = create("article", "fact-card");
-      card.append(create("strong", "", fact.value), create("span", "", fact.label));
-      return card;
-    })
-  );
-}
-
 function renderStatusLegend() {
   const statuses = ["verified", "likely", "contested", "unsupported", "superseded", "opinion"];
   const legend = document.querySelector("#status-legend");
@@ -885,7 +874,6 @@ function setupSearch() {
 
 function init() {
   renderHeader();
-  renderFactGrid();
   renderStatusLegend();
   renderDebate();
   renderAgents();
