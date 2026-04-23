@@ -952,6 +952,17 @@ a {
   align-items: end;
 }
 
+.section-heading.compact {
+  margin-top: 0;
+}
+
+.section-intro {
+  max-width: 760px;
+  margin: 10px 0 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
 .round-list,
 .agent-grid,
 .claim-sections,
@@ -2132,6 +2143,223 @@ a {
   line-height: 1.45;
 }
 
+.agent-room-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(120px, 1fr));
+  gap: 10px;
+  min-width: min(360px, 100%);
+}
+
+.agent-room-stats span {
+  display: grid;
+  gap: 2px;
+  min-height: 68px;
+  padding: 12px;
+  color: var(--muted);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--tight-shadow);
+  font-weight: 780;
+}
+
+.agent-room-stats strong {
+  color: var(--teal);
+  font-size: 1.45rem;
+  line-height: 1;
+}
+
+.agent-room-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.agent-builder-panel,
+.agent-invite-panel,
+.agent-room-column {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--tight-shadow);
+}
+
+.agent-builder-panel,
+.agent-invite-panel {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+}
+
+.agent-builder-panel h3,
+.agent-invite-panel h3 {
+  margin: 0;
+  font-size: 1.35rem;
+  letter-spacing: -0.02em;
+}
+
+.agent-invite-panel p {
+  margin: 8px 0 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.agent-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.agent-form label,
+.agent-invite-panel label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.agent-form input,
+.agent-form select,
+.agent-form textarea,
+.agent-invite-panel select,
+.invite-output {
+  width: 100%;
+  min-height: 42px;
+  padding: 10px 12px;
+  color: var(--ink);
+  background: var(--paper-strong);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.agent-form textarea,
+.invite-output {
+  resize: vertical;
+  line-height: 1.45;
+}
+
+.wide-field {
+  grid-column: 1 / -1;
+}
+
+.invite-output {
+  min-height: 180px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 0.78rem;
+}
+
+.agent-room-live {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.72fr) minmax(0, 1fr);
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.agent-room-column {
+  padding: 16px;
+}
+
+.v2-agent-roster,
+.agent-room-feed {
+  display: grid;
+  gap: 12px;
+}
+
+.v2-agent-card,
+.agent-room-message {
+  border: 1px solid var(--line);
+  border-left: 5px solid var(--agent-color, var(--teal));
+  border-radius: 8px;
+  background: rgba(255, 255, 251, 0.88);
+  box-shadow: 0 8px 22px rgba(17, 23, 19, 0.06);
+}
+
+.v2-agent-card {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+
+.v2-agent-top {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+}
+
+.v2-agent-avatar {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  color: var(--paper-strong);
+  background: var(--agent-color, var(--ink));
+  border-radius: 8px;
+  font-weight: 950;
+}
+
+.v2-agent-top h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.v2-agent-top p,
+.v2-agent-prompt {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.v2-agent-prompt {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.v2-source-diet {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.v2-source-diet span {
+  display: inline-flex;
+  min-height: 26px;
+  align-items: center;
+  padding: 5px 8px;
+  color: var(--ink);
+  background: var(--soft-green);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 780;
+}
+
+.v2-agent-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.agent-room-message {
+  padding: 14px;
+}
+
+.agent-room-message .message-paragraphs {
+  margin-top: 10px;
+}
+
+.agent-room-message p {
+  color: var(--ink);
+}
+
 .compass {
   position: relative;
   height: 150px;
@@ -2606,7 +2834,10 @@ a {
   .debate-layout,
   .source-grid,
   .agent-grid,
+  .agent-room-layout,
+  .agent-room-live,
   .source-form,
+  .agent-form,
   .claim-filter-panel {
     grid-template-columns: 1fr;
   }
@@ -2706,6 +2937,17 @@ a {
   .landing-actions {
     display: grid;
     grid-template-columns: 1fr;
+  }
+
+  .agent-room-stats {
+    grid-template-columns: 1fr;
+    min-width: 0;
+  }
+
+  .agent-builder-panel,
+  .agent-invite-panel,
+  .agent-room-column {
+    padding: 14px;
   }
 
   .landing-signal-row {

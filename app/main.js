@@ -22,13 +22,17 @@ const drawerClose = document.querySelector("#drawer-close");
 const storageKeys = {
   reactions: "debatebook.reactions.v1",
   replies: "debatebook.replies.v1",
-  submittedSources: "debatebook.submittedSources.v1"
+  submittedSources: "debatebook.submittedSources.v1",
+  customAgents: "debatebook.customAgents.v2",
+  agentRoomMessages: "debatebook.agentRoomMessages.v2"
 };
 
 const emojiOptions = ["👍", "🤔", "🔥", "🧾", "👀", "⚖️"];
 let reactionState = loadJson(storageKeys.reactions, {});
 let replyState = loadJson(storageKeys.replies, {});
 let submittedSources = loadJson(storageKeys.submittedSources, []);
+let customAgents = loadJson(storageKeys.customAgents, []);
+let agentRoomMessages = loadJson(storageKeys.agentRoomMessages, null);
 let conversationTurns = null;
 let revealObserver = null;
 let claimFilters = {
@@ -289,7 +293,8 @@ function titleCase(value) {
 }
 
 function renderHeader() {
-  document.querySelector("#topic-question").textContent = data.meta.question;
+  const topicQuestion = document.querySelector("#topic-question");
+  if (topicQuestion) topicQuestion.textContent = data.meta.question;
   document.querySelector("#claim-count").textContent = data.claims.length;
   document.querySelector("#source-count").textContent = data.sources.length;
   document.querySelector("#refresh-date").textContent = data.meta.refreshDate;
@@ -531,6 +536,233 @@ function renderAgents() {
       return card;
     })
   );
+}
+
+function parseLines(value) {
+  return text(value)
+    .split(/\n|,/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function initialsFromName(name) {
+  const parts = text(name)
+    .replace(/["']/g, "")
+    .split(/\s+/)
+    .filter(Boolean);
+  return (parts[0]?.[0] || "A") + (parts[1]?.[0] || parts[0]?.[1] || "I");
+}
+
+function roomColor(index) {
+  return ["#1e6f5c", "#b75544", "#2e6fad", "#d49a00", "#7a6df0", "#317a86"][index % 6];
+}
+
+function baseRoomAgents() {
+  return data.agents.map((agent) => ({
+    id: `seed-${agent.id}`,
+    seedId: agent.id,
+    displayName: agent.displayName || agent.personaName || agent.name,
+    initials: agent.initials,
+    roleTitle: agent.roleTitle,
+    archetype: agent.archetype,
+    identityPrompt: agent.fullPrompt,
+    sourceDiet: agent.sourceDiet || [],
+    sourceLinks: [],
+    biasLens: agent.biasLens,
+    model: "seed",
+    stance: agent.id === "republican" ? "pressure-first" : agent.id === "democratic" ? "diplomacy-first" : "truth-seeking",
+    color: agent.color,
+    isSeed: true,
+    createdAt: data.meta.refreshDate
+  }));
+}
+
+function allRoomAgents() {
+  return [...baseRoomAgents(), ...customAgents];
+}
+
+function stanceLabel(stance) {
+  return {
+    "truth-seeking": "Truth-seeking arbiter",
+    "pressure-first": "Pressure-first advocate",
+    "diplomacy-first": "Diplomacy-first critic",
+    contrarian: "Contrarian skeptic",
+    expert: "Domain expert"
+  }[stance] || titleCase(stance);
+}
+
+function stanceOpening(agent) {
+  const stance = agent.stance || "truth-seeking";
+  if (stance === "pressure-first") {
+    return "I would press the room on risk tolerance: if the material facts imply a short breakout clock, diplomacy has to prove it can still constrain the program rather than simply hope it can.";
+  }
+  if (stance === "diplomacy-first") {
+    return "I would separate danger from authorization: advanced enrichment can be alarming while still leaving open the questions of intent, legality, inspection access, and whether force improves the outcome.";
+  }
+  if (stance === "contrarian") {
+    return "I would hunt for the hidden assumption everyone is sharing, then force both coalitions to say which claim would change their mind.";
+  }
+  if (stance === "expert") {
+    return "I would start by decomposing the claim into capability, stockpile location, enrichment path, weaponization, delivery, and verification confidence.";
+  }
+  return "I would slow the room down and turn the slogan into testable claims before letting either side score points.";
+}
+
+function makeAgentRoomMessage(agent, reason = "joined") {
+  const sources = (agent.sourceDiet || []).slice(0, 3);
+  const sourceText = sources.length ? sources.join(" + ") : "no source diet declared yet";
+  const biasText = text(agent.biasLens || "not specified yet").replace(/[.\s]+$/, "");
+  return {
+    id: `M-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+    agentId: agent.id,
+    agentName: agent.displayName,
+    initials: agent.initials,
+    roleTitle: agent.roleTitle || agent.archetype || stanceLabel(agent.stance),
+    color: agent.color || "#1e6f5c",
+    model: agent.model || "local",
+    reason,
+    createdAt: new Date().toLocaleString([], {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    }),
+    body:
+      `Identity prompt: ${agent.identityPrompt}\n\n` +
+      `${stanceOpening(agent)}\n\n` +
+      `My first source diet for this debate: ${sourceText}. Bias lens: ${biasText}.`
+  };
+}
+
+function seedAgentRoomMessages() {
+  return baseRoomAgents().map((agent) => makeAgentRoomMessage(agent, "seed"));
+}
+
+function ensureAgentRoomMessages() {
+  if (!Array.isArray(agentRoomMessages)) {
+    agentRoomMessages = seedAgentRoomMessages();
+    saveJson(storageKeys.agentRoomMessages, agentRoomMessages);
+  }
+  return agentRoomMessages;
+}
+
+function saveCustomAgents() {
+  saveJson(storageKeys.customAgents, customAgents);
+}
+
+function saveAgentRoomMessages() {
+  saveJson(storageKeys.agentRoomMessages, agentRoomMessages);
+}
+
+function addAgentRoomTurn(agent, reason = "joined") {
+  ensureAgentRoomMessages();
+  agentRoomMessages = [makeAgentRoomMessage(agent, reason), ...agentRoomMessages];
+  saveAgentRoomMessages();
+  renderAgentRoom();
+}
+
+function roomAgentCard(agent) {
+  const card = create("article", "v2-agent-card");
+  card.style.setProperty("--agent-color", agent.color || "#1e6f5c");
+  const top = create("div", "v2-agent-top");
+  const avatar = create("div", "v2-agent-avatar", agent.initials);
+  const title = create("div");
+  title.append(create("h3", "", agent.displayName), create("p", "", agent.roleTitle || agent.archetype || stanceLabel(agent.stance)));
+  top.append(avatar, title);
+
+  const prompt = create("p", "v2-agent-prompt", agent.identityPrompt);
+  const meta = create("div", "claim-meta");
+  meta.append(
+    create("span", "mini-chip", stanceLabel(agent.stance)),
+    create("span", "mini-chip", agent.model === "seed" ? "Seed agent" : `${titleCase(agent.model)} preference`),
+    create("span", "mini-chip", `${(agent.sourceDiet || []).length} sources`)
+  );
+
+  const sourceList = create("div", "v2-source-diet");
+  (agent.sourceDiet || []).slice(0, 4).forEach((source) => sourceList.append(create("span", "", source)));
+  if (!sourceList.children.length) sourceList.append(create("span", "", "No source diet yet"));
+
+  const actions = create("div", "v2-agent-actions");
+  const post = create("button", "secondary-button", "Ask to post");
+  post.type = "button";
+  post.addEventListener("click", () => addAgentRoomTurn(agent, "prompted"));
+  actions.append(post);
+  if (!agent.isSeed) {
+    const remove = create("button", "secondary-button", "Remove");
+    remove.type = "button";
+    remove.addEventListener("click", () => {
+      customAgents = customAgents.filter((candidate) => candidate.id !== agent.id);
+      saveCustomAgents();
+      renderAgentRoom();
+    });
+    actions.append(remove);
+  }
+
+  card.append(top, prompt, meta, sourceList, actions);
+  return card;
+}
+
+function roomMessageCard(message) {
+  const card = create("article", "agent-room-message");
+  card.style.setProperty("--agent-color", message.color || "#1e6f5c");
+  const meta = create("div", "thread-meta");
+  meta.append(
+    create("strong", "thread-handle", message.agentName),
+    create("span", "thread-flair", message.roleTitle),
+    create("span", "", message.createdAt),
+    create("span", "", message.reason === "seed" ? "seed turn" : "local draft")
+  );
+  const body = messageParagraphs(message.body);
+  card.append(meta, body);
+  return card;
+}
+
+function invitePayload(agent) {
+  return {
+    theydebated_version: "v2-agent-invite",
+    room_url: `${location.origin}${location.pathname}#agent-room`,
+    topic: data.meta.title,
+    debate_question: data.meta.question,
+    agent: {
+      displayName: agent.displayName,
+      initials: agent.initials,
+      roleTitle: agent.roleTitle,
+      stance: agent.stance,
+      model: agent.model,
+      identityPrompt: agent.identityPrompt,
+      sourceDiet: agent.sourceDiet,
+      sourceLinks: agent.sourceLinks,
+      biasLens: agent.biasLens
+    }
+  };
+}
+
+function renderInviteSelect() {
+  const select = document.querySelector("#agent-invite-select");
+  if (!select) return;
+  const previous = select.value;
+  const agents = allRoomAgents();
+  select.replaceChildren(
+    ...agents.map((agent) => {
+      const option = create("option", "", `${agent.displayName} - ${stanceLabel(agent.stance)}`);
+      option.value = agent.id;
+      return option;
+    })
+  );
+  if (agents.some((agent) => agent.id === previous)) select.value = previous;
+}
+
+function renderAgentRoom() {
+  const roster = document.querySelector("#v2-agent-roster");
+  const feed = document.querySelector("#agent-room-feed");
+  if (!roster || !feed) return;
+  const agents = allRoomAgents();
+  const messages = ensureAgentRoomMessages();
+  document.querySelector("#v2-agent-count").textContent = agents.length;
+  document.querySelector("#v2-message-count").textContent = messages.length;
+  roster.replaceChildren(...agents.map(roomAgentCard));
+  feed.replaceChildren(...messages.map(roomMessageCard));
+  renderInviteSelect();
 }
 
 function sourceLinks(sourceIds) {
@@ -830,6 +1062,73 @@ async function hydrateSubmittedSources() {
   }
 }
 
+function setupAgentRoom() {
+  const form = document.querySelector("#agent-create-form");
+  const inviteButton = document.querySelector("#agent-invite-button");
+  const resetButton = document.querySelector("#agent-room-reset");
+
+  form?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const name = document.querySelector("#agent-name").value.trim();
+    const archetype = document.querySelector("#agent-archetype").value.trim();
+    const identityPrompt = document.querySelector("#agent-identity").value.trim();
+    const sourceDiet = parseLines(document.querySelector("#agent-sources").value);
+    const sourceLinks = parseLines(document.querySelector("#agent-source-links").value);
+    const biasLens = document.querySelector("#agent-bias").value.trim();
+    const stance = document.querySelector("#agent-stance").value;
+    const model = document.querySelector("#agent-model").value;
+    const status = document.querySelector("#agent-form-status");
+
+    const nextAgent = {
+      id: `custom-${Date.now()}`,
+      displayName: name,
+      initials: initialsFromName(name).slice(0, 2).toUpperCase(),
+      roleTitle: archetype,
+      archetype,
+      identityPrompt,
+      sourceDiet,
+      sourceLinks,
+      biasLens,
+      stance,
+      model,
+      color: roomColor(customAgents.length + data.agents.length),
+      isSeed: false,
+      createdAt: new Date().toISOString()
+    };
+
+    customAgents = [nextAgent, ...customAgents];
+    saveCustomAgents();
+    addAgentRoomTurn(nextAgent, "created");
+    form.reset();
+    status.textContent = `${nextAgent.displayName} joined the room and posted a first local draft turn.`;
+  });
+
+  inviteButton?.addEventListener("click", async () => {
+    const select = document.querySelector("#agent-invite-select");
+    const output = document.querySelector("#agent-invite-output");
+    const status = document.querySelector("#agent-invite-status");
+    const agent = allRoomAgents().find((candidate) => candidate.id === select.value);
+    if (!agent) {
+      status.textContent = "Pick an agent first.";
+      return;
+    }
+    const payload = JSON.stringify(invitePayload(agent), null, 2);
+    output.value = payload;
+    try {
+      await navigator.clipboard.writeText(payload);
+      status.textContent = "Invite payload copied. Send it to someone who wants their agent to join.";
+    } catch {
+      status.textContent = "Invite payload generated. Copy it from the box.";
+    }
+  });
+
+  resetButton?.addEventListener("click", () => {
+    agentRoomMessages = seedAgentRoomMessages();
+    saveAgentRoomMessages();
+    renderAgentRoom();
+  });
+}
+
 function setupTabs() {
   const tabButtons = Array.from(document.querySelectorAll(".tab-button"));
   const tabPanels = Array.from(document.querySelectorAll(".tab-panel"));
@@ -894,6 +1193,7 @@ function init() {
   renderStatusLegend();
   renderDebate();
   renderAgents();
+  renderAgentRoom();
   renderClaims();
   renderSources();
   renderSubmittedSources();
@@ -901,6 +1201,7 @@ function init() {
   setupTabs();
   setupSearch();
   setupSourceSubmission();
+  setupAgentRoom();
   drawerClose.addEventListener("click", closeDrawer);
   drawerScrim.addEventListener("click", closeDrawer);
   document.addEventListener("keydown", (event) => {
