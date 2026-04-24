@@ -223,24 +223,12 @@ a {
   border: 1px solid var(--line-strong);
 }
 
-.landing-signal-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 22px;
-}
-
-.landing-signal-row span {
-  display: inline-flex;
-  align-items: center;
-  min-height: 34px;
-  padding: 8px 10px;
-  color: rgba(17, 23, 19, 0.78);
-  background: rgba(255, 255, 251, 0.6);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  font-size: 0.78rem;
-  font-weight: 900;
+.landing-meta {
+  margin: 16px 0 0;
+  color: rgba(17, 23, 19, 0.56);
+  font-size: 0.82rem;
+  font-weight: 780;
+  letter-spacing: 0.02em;
 }
 
 .debate-illustration {
@@ -617,26 +605,6 @@ a {
   max-width: 720px;
 }
 
-.header-pill-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 14px;
-}
-
-.header-pill-row span {
-  display: inline-flex;
-  align-items: center;
-  min-height: 30px;
-  padding: 6px 10px;
-  color: var(--ink);
-  background: rgba(255, 255, 251, 0.78);
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  font-size: 0.78rem;
-  font-weight: 850;
-}
-
 .eyebrow,
 .section-kicker {
   margin: 0 0 8px;
@@ -791,23 +759,13 @@ a {
   font-size: 0.86rem;
 }
 
-.thread-op-topline {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.thread-op-topline span {
-  display: inline-flex;
-  min-height: 22px;
-  align-items: center;
-  padding: 4px 8px;
-  color: rgba(17, 23, 19, 0.76);
-  background: rgba(255, 255, 251, 0.72);
-  border: 1px solid var(--line);
-  border-radius: 999px;
+.thread-op-label {
+  margin: 0;
+  color: rgba(17, 23, 19, 0.52);
   font-size: 0.68rem;
-  font-weight: 840;
+  font-weight: 850;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
 }
 
 .topic-infographic {
@@ -2871,9 +2829,12 @@ a {
     margin-left: auto;
   }
 
-  .landing-actions,
-  .landing-signal-row {
+  .landing-actions {
     justify-content: center;
+  }
+
+  .landing-meta {
+    text-align: center;
   }
 
   .debate-illustration {
@@ -2962,13 +2923,10 @@ a {
     padding: 14px;
   }
 
-  .landing-signal-row {
-    display: grid;
-    grid-template-columns: 1fr;
-  }
-
-  .landing-signal-row span {
-    justify-content: center;
+  .landing-meta {
+    font-size: 0.76rem;
+    line-height: 1.5;
+    text-align: center;
   }
 
   .debate-illustration {
