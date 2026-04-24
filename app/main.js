@@ -419,24 +419,8 @@ function flagshipThreads() {
       question: "Was Iran actually close to a nuclear weapon?",
       intro:
         "This first sourced thread asks what the public record actually proved about Iran's uranium stockpile, inspections, breakout risk, and whether 'near-bomb' rhetoric outran the evidence.",
-      contextLabel: "Evidence frame / before the agents answer",
-      contextTitle: "Quick context before the debate",
       contextSummary:
         "Iran's reported 60% enriched uranium stockpile is a serious breakout-risk signal, but enriched material is not the same thing as a finished bomb. The agents argue what the public evidence actually proves.",
-      contextPoints: [
-        {
-          title: "3-5%: common reactor-fuel range.",
-          summary: "Useful civilian reference point."
-        },
-        {
-          title: "60%: reported Iranian stockpile level.",
-          summary: "Much closer to weapons-grade."
-        },
-        {
-          title: "90%: weapons-grade shorthand.",
-          summary: "Still not a completed weapon."
-        }
-      ],
       verdict:
         "The strong case is that Iran had unusually advanced nuclear material. The strong caution is that the evidence did not prove a completed bomb program or a political order to build one.",
       refreshDate: data.meta.refreshDate,
@@ -457,15 +441,8 @@ function builtInPrototypeThreads() {
       question: "Are AI chip export controls actually slowing frontier AI development?",
       intro:
         "This prototype room asks whether export controls materially slow frontier capability, or mainly reshuffle supply chains and political leverage.",
-      contextLabel: "Room frame / local prototype",
-      contextTitle: "Quick context before the debate",
       contextSummary:
         "This room starts with a narrower policy question: do chip controls change the underlying capability curve, or mostly the commercial geography around it?",
-      contextPoints: [
-        { title: "Hardware matters.", summary: "Training runs depend on scarce compute." },
-        { title: "Enforcement matters.", summary: "Workarounds can hollow out bold policy." },
-        { title: "Time matters.", summary: "Even delays can be strategically useful." }
-      ],
       verdict:
         "Open question: controls can still matter even if they do not freeze progress outright. The debate is about degree, enforcement, and alliance durability.",
       refreshDate: "2026-04-24",
@@ -512,15 +489,8 @@ function builtInPrototypeThreads() {
       question: "Should Europe increase defense spending much faster over the next few years?",
       intro:
         "This prototype room asks whether faster European defense spending is a strategic necessity, a fiscal overreaction, or both depending on how it is designed.",
-      contextLabel: "Room frame / local prototype",
-      contextTitle: "Quick context before the debate",
       contextSummary:
         "The basic tradeoff is speed versus waste: moving too slowly can leave gaps, but moving too fast can produce expensive theater instead of real readiness.",
-      contextPoints: [
-        { title: "Readiness is uneven.", summary: "Budget totals do not equal deployable capacity." },
-        { title: "Procurement is slow.", summary: "Money can bottleneck in industrial lead times." },
-        { title: "Politics is part of deterrence.", summary: "Signals can matter before inventories catch up." }
-      ],
       verdict:
         "Open question: the room agrees speed matters, but not every extra euro automatically becomes usable deterrence.",
       refreshDate: "2026-04-24",
@@ -758,17 +728,6 @@ function orderedThreadAgents(agentIds) {
   return [...agentIds].sort((a, b) => (weights[a] ?? 5) - (weights[b] ?? 5));
 }
 
-function defaultContextPoints(count = 0) {
-  return [
-    { title: "Question first.", summary: "Keep the room narrow enough that the disagreement is inspectable." },
-    {
-      title: "Invite identifiable agents.",
-      summary: count ? `${count} agents are selected for the opening pass.` : "Connect agents after the room is live."
-    },
-    { title: "Receipts can mature later.", summary: "Local rooms start conversationally, then harden into a sourced ledger." }
-  ];
-}
-
 function threadDraftTitle(agent, index) {
   if ((agent.seedId || agent.id) === "arbiter") return "Pinned arbiter note";
   if (index === 1) return "Opening case";
@@ -797,12 +756,7 @@ function buildLocalThreadShell({
   title,
   question,
   intro,
-  contextLabel = "Room frame / local draft",
-  contextTitle = "Quick context before the debate",
   contextSummary,
-  contextPoints = [],
-  pointsTitle = "Room reference points",
-  pointsSummary = "This room is open for new agents, fresh angles, and follow-up argument.",
   verdict = "Fresh room: no arbiter verdict yet. Invite agents and let the first turns expose the real fault lines.",
   refreshDate = todayIso(),
   sourceThreadId = null,
@@ -816,12 +770,7 @@ function buildLocalThreadShell({
     eyebrow: sourceThreadId ? `Open room / ${title}` : `Custom topic room / ${title}`,
     question,
     intro: intro || "A user-created room for local agent drafts, invites, and topic exploration.",
-    contextLabel,
-    contextTitle,
     contextSummary: contextSummary || intro || "This thread is a local draft room. Invite agents and let them stake out their first positions.",
-    contextPoints: contextPoints.length ? contextPoints : defaultContextPoints(agentIds.length),
-    pointsTitle,
-    pointsSummary,
     verdict,
     refreshDate,
     claimMode: "local",
@@ -840,11 +789,6 @@ function buildThreadFromForm({ title, question, context, agentIds }) {
     question,
     intro: context || "A user-created room for local agent drafts, invites, and topic exploration.",
     contextSummary: context || "This thread is a local draft room. Invite agents and let them stake out their first positions.",
-    contextPoints: [
-      { title: "Question first.", summary: "Start with a crisp room prompt." },
-      { title: "Invite the right agents.", summary: `${orderedAgents.length} agents selected for the opening pass.` },
-      { title: "Let the room sharpen.", summary: "The first turns are for framing, not final truth." }
-    ],
     agentIds: orderedAgents,
     rounds: orderedAgents.map((agentId, index) => createThreadRound({ id, question }, agentId, index))
   });
@@ -864,14 +808,8 @@ function branchThreadFromSource(sourceThread) {
     question: sourceThread.question,
     intro:
       `Local branch from "${sourceThread.title}". The sourced ledger stays intact while new agents can join and push the argument further.`,
-    contextLabel: sourceThread.contextLabel || "Room frame / sourced branch",
-    contextTitle: sourceThread.contextTitle || "Quick context before the debate",
     contextSummary:
       sourceThread.contextSummary || sourceThread.intro || "This branch room inherits the source context, then opens itself to new agents.",
-    contextPoints: sourceThread.contextPoints || defaultContextPoints(seedAgents.length),
-    pointsTitle: sourceThread.pointsTitle || "Room reference points",
-    pointsSummary:
-      sourceThread.pointsSummary || "This branch room inherits the sourced frame, then lets new agents extend the debate.",
     verdict:
       `Branch room created from "${sourceThread.title}". The sourced thread remains unchanged; this room is where invited agents can join.`,
     sourceThreadId: sourceThread.id,
@@ -1438,12 +1376,7 @@ function roomInvitePayload(thread = getActiveThread()) {
       title: thread.title,
       question: thread.question,
       intro: thread.intro,
-      contextLabel: thread.contextLabel,
-      contextTitle: thread.contextTitle,
       contextSummary: thread.contextSummary,
-      contextPoints: thread.contextPoints,
-      pointsTitle: thread.pointsTitle,
-      pointsSummary: thread.pointsSummary,
       sourceThreadId: thread.sourceThreadId || (thread.claimMode === "full" ? thread.id : null),
       claimMode: thread.claimMode
     }
@@ -1539,12 +1472,7 @@ function importRoomInvite(rawThread) {
     title: rawThread.title || "Imported room",
     question: rawThread.question || "What should this room debate?",
     intro: rawThread.intro || "Imported from a shared room invite.",
-    contextLabel: rawThread.contextLabel || "Room frame / imported",
-    contextTitle: rawThread.contextTitle || "Quick context before the debate",
     contextSummary: rawThread.contextSummary || rawThread.intro || "Imported room ready for agents to join.",
-    contextPoints: rawThread.contextPoints || defaultContextPoints(0),
-    pointsTitle: rawThread.pointsTitle || "Room reference points",
-    pointsSummary: rawThread.pointsSummary || "This imported room is ready for agents to join.",
     sourceThreadId: rawThread.sourceThreadId || null,
     agentIds: [],
     rounds: [],

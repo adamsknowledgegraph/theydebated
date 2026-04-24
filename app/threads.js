@@ -990,26 +990,8 @@
     question: "Was Iran actually close to a nuclear weapon?",
     intro:
       "This first sourced thread asks what the public record actually proved about Iran's uranium stockpile, inspections, breakout risk, and whether 'near-bomb' rhetoric outran the evidence.",
-    contextLabel: "Evidence frame / before the agents answer",
-    contextTitle: "Quick context before the debate",
     contextSummary:
       "Iran's reported 60% enriched uranium stockpile was a serious breakout-risk signal, but enriched material is not the same thing as a finished bomb. The agents argue over what the record really proves.",
-    pointsTitle: "Reference points",
-    pointsSummary: "Enrichment level matters, but it is only one part of the weapon question.",
-    contextPoints: [
-      {
-        title: "3-5%: common reactor-fuel range.",
-        summary: "Useful civilian reference point."
-      },
-      {
-        title: "60%: reported Iranian stockpile level.",
-        summary: "Much closer to weapons-grade."
-      },
-      {
-        title: "90%: weapons-grade shorthand.",
-        summary: "Still not a completed weapon."
-      }
-    ],
     verdict:
       "The strongest factual sentence remains: Iran was alarmingly close to rapid weapons-grade uranium production, but the public evidence did not prove a completed weapon or a clear political decision to build one.",
     refreshDate: "2026-04-22",
@@ -1026,26 +1008,8 @@
     question: "Was the USA right to go to war with Iran? Was it a good decision?",
     intro:
       "This follow-up thread asks the next and harder question. As of April 24, 2026, the war sits inside an uneasy ceasefire, repeated war-powers fights in Congress, unresolved bargaining over buried uranium, and a public record that shows real tactical damage but no simple strategic verdict.",
-    contextLabel: "Decision frame / before the agents answer",
-    contextTitle: "What this thread is judging",
     contextSummary:
       "A war decision should be judged across four tests: threat, authority, tactical effect, and strategic aftermath. The fight here is over which column deserves the most weight.",
-    pointsTitle: "Decision checkpoints",
-    pointsSummary: "The war case rises or falls on more than fear alone: threat, authority, damage, and aftermath all matter.",
-    contextPoints: [
-      {
-        title: "Threat",
-        summary: "The White House said Iran still posed a nuclear, missile, and proxy danger."
-      },
-      {
-        title: "Authority",
-        summary: "Congress never enacted a new authorization, even as cutoff votes failed."
-      },
-      {
-        title: "Aftermath",
-        summary: "Ceasefire pressure is real, but so are shipping attacks, uranium disputes, and verification gaps."
-      }
-    ],
     verdict:
       "Current public evidence supports real tactical disruption and coercive leverage, but not yet a clean verdict that the war was plainly legal, plainly necessary, or plainly successful in durable strategic terms.",
     refreshDate: "2026-04-24",
