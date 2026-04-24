@@ -837,25 +837,11 @@ function renderHeader() {
   document.querySelector("#thread-intro").textContent = thread.contextSummary || thread.intro;
 }
 
-function renderStatusLegend() {
-  const statuses = ["verified", "likely", "contested", "unsupported", "superseded", "opinion"];
-  const legend = document.querySelector("#status-legend");
-  legend.replaceChildren(
-    ...statuses.map((status) => {
-      const item = create("div", "legend-item");
-      item.append(create("span", `status-dot ${statusClass(status)}`), create("span", "", statusLabels[status]));
-      return item;
-    })
-  );
-}
-
 function renderDebate() {
   const thread = getActiveThread();
   const list = document.querySelector("#debate-rounds");
   const toolbar = document.querySelector("#thread-toolbar");
   const turns = getConversationTurns(thread);
-
-  document.querySelector("#thread-verdict").textContent = thread.verdict;
 
   toolbar.replaceChildren(
     create("span", "", thread.kind === "flagship" ? "public thread" : "local thread"),
@@ -2228,7 +2214,6 @@ function setupSearch() {
 function init() {
   renderThreadDirectory();
   renderHeader();
-  renderStatusLegend();
   renderDebate();
   renderTopicVote();
   renderAgents();

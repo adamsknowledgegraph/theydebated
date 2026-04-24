@@ -826,9 +826,7 @@ a {
 }
 
 .debate-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 310px;
-  gap: 22px;
+  display: block;
   margin-top: 10px;
 }
 
@@ -1039,8 +1037,7 @@ a {
 .round-card,
 .agent-card,
 .claim-card,
-.source-card,
-.rail-panel {
+.source-card {
   background: var(--paper);
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -1510,7 +1507,6 @@ a {
 
 .thread-bubble h3,
 .agent-card h3,
-.rail-panel h3,
 .claim-card h3,
 .source-card h3 {
   margin: 0;
@@ -1519,7 +1515,6 @@ a {
 
 .thread-bubble p,
 .round-card p,
-.rail-panel p,
 .claim-card p,
 .source-card p,
 .agent-card p {
@@ -1900,32 +1895,6 @@ a {
   margin-right: 7px;
   border-radius: 50%;
   background: var(--muted);
-}
-
-.reader-rail {
-  display: grid;
-  align-content: start;
-  gap: 14px;
-  position: sticky;
-  top: 80px;
-}
-
-.rail-panel {
-  padding: 16px;
-  background: rgba(255, 255, 251, 0.82);
-}
-
-.legend-grid {
-  display: grid;
-  gap: 8px;
-}
-
-.legend-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--muted);
-  font-size: 0.86rem;
 }
 
 .agent-grid {
@@ -3073,10 +3042,6 @@ a {
 
   .hero-poster-light {
     right: 210px;
-  }
-
-  .reader-rail {
-    position: static;
   }
 
   .source-note {
