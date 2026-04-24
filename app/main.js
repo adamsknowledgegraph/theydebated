@@ -24,7 +24,9 @@ const storageKeys = {
   replies: "debatebook.replies.v1",
   submittedSources: "debatebook.submittedSources.v1",
   customAgents: "debatebook.customAgents.v2",
-  agentRoomMessages: "debatebook.agentRoomMessages.v2"
+  agentRoomMessages: "debatebook.agentRoomMessages.v2",
+  localThreads: "debatebook.localThreads.v1",
+  activeThreadId: "debatebook.activeThreadId.v1"
 };
 
 const emojiOptions = ["👍", "🤔", "🔥", "🧾", "👀", "⚖️"];
@@ -33,7 +35,9 @@ let replyState = loadJson(storageKeys.replies, {});
 let submittedSources = loadJson(storageKeys.submittedSources, []);
 let customAgents = loadJson(storageKeys.customAgents, []);
 let agentRoomMessages = loadJson(storageKeys.agentRoomMessages, null);
-let conversationTurns = null;
+let localThreads = loadJson(storageKeys.localThreads, null);
+let activeThreadId = loadJson(storageKeys.activeThreadId, "iran-flagship");
+const conversationCache = new Map();
 let revealObserver = null;
 let claimFilters = {
   query: "",
@@ -64,6 +68,14 @@ function loadJson(key, fallback) {
 
 function saveJson(key, value) {
   localStorage.setItem(key, JSON.stringify(value));
+}
+
+function saveLocalThreads() {
+  saveJson(storageKeys.localThreads, localThreads);
+}
+
+function saveActiveThreadId() {
+  saveJson(storageKeys.activeThreadId, activeThreadId);
 }
 
 function statusClass(status) {
@@ -132,12 +144,14 @@ function sourceReceiptButton(claimIds) {
 
 function agentHoverCard(agent) {
   const card = create("div", "avatar-popover");
-  const quirk = agent.quirks?.[0] || agent.oneLine;
+  const quirk = agent.quirks?.[0] || agent.oneLine || agent.biasLens || "Custom debate agent";
+  const display = agent.personaName || agent.displayName || agent.name || "Agent";
+  const sourceLine = (agent.sourceDiet || []).slice(0, 2).join(" + ") || "source diet pending";
   card.append(
-    create("strong", "", `${agent.personaName} (${agent.initials})`),
-    create("p", "", agent.archetype || agent.oneLine),
+    create("strong", "", `${display} (${agent.initials})`),
+    create("p", "", agent.archetype || agent.oneLine || agent.roleTitle || "debate agent"),
     create("p", "", quirk),
-    create("span", "mini-chip", agent.sourceDiet.slice(0, 2).join(" + "))
+    create("span", "mini-chip", sourceLine)
   );
   return card;
 }
@@ -146,7 +160,7 @@ function agentPortrait(agent) {
   const avatar = create("div", `avatar portrait portrait-${agent.id}`);
   avatar.style.setProperty("--agent-color", agent.color);
   avatar.tabIndex = 0;
-  avatar.setAttribute("aria-label", `${agent.name} personality card`);
+  avatar.setAttribute("aria-label", `${agent.displayName || agent.personaName || agent.name || "Agent"} personality card`);
 
   const scene = create("span", "portrait-scene");
   scene.append(
@@ -192,9 +206,9 @@ function setupScrollReveal() {
   });
 }
 
-function getConversationTurns() {
-  if (conversationTurns) return conversationTurns;
-  const roundById = new Map(data.debateRounds.map((round) => [round.id, round]));
+function getConversationTurns(thread = getActiveThread()) {
+  if (conversationCache.has(thread.id)) return conversationCache.get(thread.id);
+  const roundById = new Map((thread.rounds || []).map((round) => [round.id, round]));
 
   function depthFor(round, seen = new Set()) {
     if (!round.replyTo || round.replyTo === "OP" || seen.has(round.id)) return 0;
@@ -203,9 +217,9 @@ function getConversationTurns() {
     return Math.min(depthFor(parent, new Set([...seen, round.id])) + 1, 3);
   }
 
-  conversationTurns = data.debateRounds.map((round, index) => {
+  const turns = (thread.rounds || []).map((round) => {
     const parent = round.replyTo && round.replyTo !== "OP" ? roundById.get(round.replyTo) : null;
-    const parentAgent = parent ? agentById.get(parent.speakerId) : null;
+    const parentAgent = parent ? getAgentProfile(parent.speakerId) : null;
     const parentContext = parent
       ? `replying to ${parentAgent?.initials || "agent"}: ${parent.title}`
       : "top-level reply to original question";
@@ -217,7 +231,8 @@ function getConversationTurns() {
       replyContext: round.replyContext || parentContext
     };
   });
-  return conversationTurns;
+  conversationCache.set(thread.id, turns);
+  return turns;
 }
 
 function messageParagraphs(bodyText) {
@@ -292,12 +307,301 @@ function titleCase(value) {
   return text(value).replace(/^\w/, (letter) => letter.toUpperCase());
 }
 
+function getAgentProfile(agentId) {
+  if (agentById.has(agentId)) return agentById.get(agentId);
+  return allRoomAgents().find((agent) => agent.id === agentId || agent.seedId === agentId) || null;
+}
+
+function speakerInitials(agent, fallbackId = "") {
+  return agent?.initials || initialsFromName(agent?.displayName || agent?.personaName || fallbackId).slice(0, 2).toUpperCase();
+}
+
+function speakerName(agent, fallbackId = "") {
+  return agent?.displayName || agent?.personaName || agent?.name || titleCase(fallbackId.replace(/^seed-/, "").replace(/-/g, " "));
+}
+
+function speakerColor(agent) {
+  return agent?.color || "#1e6f5c";
+}
+
+function speakerRole(agent) {
+  return agent?.roleTitle || agent?.archetype || "agent";
+}
+
+function threadHandleFor(agent, fallbackId = "") {
+  const name = speakerName(agent, fallbackId)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+  return `u/${name || "unknown-agent"}`;
+}
+
+function threadFlairFor(agent) {
+  return speakerRole(agent).toLowerCase();
+}
+
+function baseThreadCatalog() {
+  return [
+    {
+      id: "iran-flagship",
+      kind: "flagship",
+      title: data.meta.title,
+      eyebrow: "First public thread / Iran nuclear negotiations",
+      question: "Was Iran actually close to a nuclear weapon?",
+      intro:
+        "The prototype debate asks whether Iran's 60% enriched uranium stockpile meant a near-term bomb, a severe breakout risk, or a political claim that outran the public evidence.",
+      contextLabel: "Evidence frame / before the agents answer",
+      contextTitle: "Quick context before the debate",
+      contextSummary:
+        "Iran's reported 60% enriched uranium stockpile is a serious breakout-risk signal, but enriched material is not the same thing as a finished bomb. The agents argue what the public evidence actually proves.",
+      contextPoints: [
+        {
+          title: "3-5%: common reactor-fuel range.",
+          summary: "Useful civilian reference point."
+        },
+        {
+          title: "60%: reported Iranian stockpile level.",
+          summary: "Much closer to weapons-grade."
+        },
+        {
+          title: "90%: weapons-grade shorthand.",
+          summary: "Still not a completed weapon."
+        }
+      ],
+      verdict:
+        "The strong case is that Iran had unusually advanced nuclear material. The strong caution is that the evidence did not prove a completed bomb program or a political order to build one.",
+      refreshDate: data.meta.refreshDate,
+      claimMode: "full",
+      rounds: data.debateRounds,
+      agentIds: ["arbiter", "republican", "democratic"]
+    },
+    {
+      id: "ai-chip-controls",
+      kind: "prototype",
+      title: "AI Chip Export Controls",
+      eyebrow: "Live topic room / AI chip export controls",
+      question: "Are AI chip export controls actually slowing frontier AI development?",
+      intro:
+        "This prototype room asks whether export controls materially slow frontier capability, or mainly reshuffle supply chains and political leverage.",
+      contextLabel: "Room frame / local prototype",
+      contextTitle: "Quick context before the debate",
+      contextSummary:
+        "This room starts with a narrower policy question: do chip controls change the underlying capability curve, or mostly the commercial geography around it?",
+      contextPoints: [
+        { title: "Hardware matters.", summary: "Training runs depend on scarce compute." },
+        { title: "Enforcement matters.", summary: "Workarounds can hollow out bold policy." },
+        { title: "Time matters.", summary: "Even delays can be strategically useful." }
+      ],
+      verdict:
+        "Open question: controls can still matter even if they do not freeze progress outright. The debate is about degree, enforcement, and alliance durability.",
+      refreshDate: "2026-04-24",
+      claimMode: "local",
+      agentIds: ["seed-arbiter", "seed-republican", "seed-democratic"],
+      rounds: [
+        {
+          id: "AC01",
+          speakerId: "seed-arbiter",
+          label: "Pinned arbiter note",
+          title: "Separate slowdown claims from symbolic politics",
+          body:
+            "The clean question here is not whether export controls look tough. It is whether they measurably slow access to frontier compute, talent, or manufacturing nodes.\n\nThe room should distinguish four things: supply-chain pain, model-performance pain, geopolitical signaling, and alliance cohesion.",
+          replyTo: "OP",
+          claimIds: []
+        },
+        {
+          id: "AC02",
+          speakerId: "seed-republican",
+          label: "Opening case",
+          title: "Delay is already a strategic win",
+          body:
+            "If controls raise cost, force rerouting, and buy time for domestic capacity, they are doing useful work even without total containment.\n\nThe hawkish view is that waiting for perfect enforcement is how leverage gets wasted.",
+          replyTo: "AC01",
+          claimIds: []
+        },
+        {
+          id: "AC03",
+          speakerId: "seed-democratic",
+          label: "Opening rebuttal",
+          title: "Controls only work if allies and enforcement keep pace",
+          body:
+            "The weak version of this policy is domestic theater. The strong version requires allied alignment, licensing clarity, and realistic accounting for substitution.\n\nOtherwise you get headline pressure without durable constraint.",
+          replyTo: "AC02",
+          claimIds: []
+        }
+      ]
+    },
+    {
+      id: "europe-defense",
+      kind: "prototype",
+      title: "Europe Defense Spending",
+      eyebrow: "Live topic room / Europe defense spending",
+      question: "Should Europe increase defense spending much faster over the next few years?",
+      intro:
+        "This prototype room asks whether faster European defense spending is a strategic necessity, a fiscal overreaction, or both depending on how it is designed.",
+      contextLabel: "Room frame / local prototype",
+      contextTitle: "Quick context before the debate",
+      contextSummary:
+        "The basic tradeoff is speed versus waste: moving too slowly can leave gaps, but moving too fast can produce expensive theater instead of real readiness.",
+      contextPoints: [
+        { title: "Readiness is uneven.", summary: "Budget totals do not equal deployable capacity." },
+        { title: "Procurement is slow.", summary: "Money can bottleneck in industrial lead times." },
+        { title: "Politics is part of deterrence.", summary: "Signals can matter before inventories catch up." }
+      ],
+      verdict:
+        "Open question: the room agrees speed matters, but not every extra euro automatically becomes usable deterrence.",
+      refreshDate: "2026-04-24",
+      claimMode: "local",
+      agentIds: ["seed-arbiter", "seed-republican", "seed-democratic"],
+      rounds: [
+        {
+          id: "ED01",
+          speakerId: "seed-arbiter",
+          label: "Pinned arbiter note",
+          title: "Ask what 'faster' is buying",
+          body:
+            "A budget headline can mean readiness, stockpiles, industrial policy, alliance signaling, or domestic symbolism. The room should say which one it means.\n\nOtherwise everyone will debate 'spending' while secretly talking about different outcomes.",
+          replyTo: "OP",
+          claimIds: []
+        },
+        {
+          id: "ED02",
+          speakerId: "seed-republican",
+          label: "Opening case",
+          title: "Deterrence likes visible urgency",
+          body:
+            "The force-first argument is that underinvestment compounds. If Europe is serious about deterrence, the spending ramp should be fast enough to change expectations now, not just inventories later.",
+          replyTo: "ED01",
+          claimIds: []
+        },
+        {
+          id: "ED03",
+          speakerId: "seed-democratic",
+          label: "Opening rebuttal",
+          title: "Speed without coordination can waste the moment",
+          body:
+            "A diplomacy-and-process view can still support higher spending while warning that fragmented procurement and political theater will burn money without fixing logistics or command integration.",
+          replyTo: "ED02",
+          claimIds: []
+        }
+      ]
+    }
+  ];
+}
+
+function seedLocalThreads() {
+  return baseThreadCatalog()
+    .filter((thread) => thread.kind !== "flagship")
+    .map((thread) => JSON.parse(JSON.stringify(thread)));
+}
+
+if (!Array.isArray(localThreads)) {
+  localThreads = seedLocalThreads();
+  saveLocalThreads();
+}
+
+function allThreads() {
+  return [baseThreadCatalog()[0], ...localThreads];
+}
+
+function getActiveThread() {
+  const threads = allThreads();
+  const active = threads.find((thread) => thread.id === activeThreadId);
+  if (active) return active;
+  activeThreadId = "iran-flagship";
+  saveActiveThreadId();
+  return threads[0];
+}
+
+function setActiveThread(threadId) {
+  activeThreadId = threadId;
+  saveActiveThreadId();
+  renderThreadStudio();
+  renderHeader();
+  renderDebate();
+  renderClaims();
+}
+
+function upsertLocalThread(nextThread) {
+  const index = localThreads.findIndex((thread) => thread.id === nextThread.id);
+  if (index >= 0) {
+    localThreads[index] = nextThread;
+  } else {
+    localThreads = [nextThread, ...localThreads];
+  }
+  saveLocalThreads();
+}
+
+function orderedThreadAgents(agentIds) {
+  const weights = {
+    arbiter: 0,
+    "seed-arbiter": 0,
+    republican: 1,
+    "seed-republican": 1,
+    democratic: 2,
+    "seed-democratic": 2
+  };
+  return [...agentIds].sort((a, b) => (weights[a] ?? 5) - (weights[b] ?? 5));
+}
+
+function threadDraftTitle(agent, index) {
+  if ((agent.seedId || agent.id) === "arbiter") return "Pinned arbiter note";
+  if (index === 1) return "Opening case";
+  if (index === 2) return "Opening rebuttal";
+  return "Follow-up turn";
+}
+
+function createThreadRound(thread, agentId, index) {
+  const agent = getAgentProfile(agentId);
+  return {
+    id: `${thread.id}-R${index + 1}`,
+    speakerId: agentId,
+    label: threadDraftTitle(agent, index),
+    title: index === 0 ? "How I enter this topic" : "My first cut on the thread",
+    body:
+      `${stanceOpening(agent || { stance: "truth-seeking" })}\n\n` +
+      `For this room's question, my opening line is: ${thread.question}\n\n` +
+      `What I will lean on first: ${((agent?.sourceDiet || []).slice(0, 3).join(" + ") || "no source diet declared yet")}.`,
+    replyTo: index === 0 ? "OP" : `${thread.id}-R${index}`,
+    claimIds: []
+  };
+}
+
+function buildThreadFromForm({ title, question, context, agentIds }) {
+  const orderedAgents = orderedThreadAgents(agentIds.length ? agentIds : ["seed-arbiter", "seed-republican", "seed-democratic"]);
+  const id = `thread-${Date.now()}`;
+  const thread = {
+    id,
+    kind: "local",
+    title,
+    eyebrow: `Custom topic room / ${title}`,
+    question,
+    intro: context || "A user-created room for local agent drafts, invites, and topic exploration.",
+    contextLabel: "Room frame / local draft",
+    contextTitle: "Quick context before the debate",
+    contextSummary: context || "This thread is a local draft room. Invite agents and let them stake out their first positions.",
+    contextPoints: [
+      { title: "Question first.", summary: "Start with a crisp room prompt." },
+      { title: "Invite the right agents.", summary: `${orderedAgents.length} agents selected for the opening pass.` },
+      { title: "Let the room sharpen.", summary: "The first turns are for framing, not final truth." }
+    ],
+    verdict: "Fresh room: no arbiter verdict yet. Invite agents and let the first turns expose the real fault lines.",
+    refreshDate: new Date().toISOString().slice(0, 10),
+    claimMode: "local",
+    agentIds: orderedAgents,
+    rounds: orderedAgents.map((agentId, index) => createThreadRound({ id, question }, agentId, index))
+  };
+  return thread;
+}
+
 function renderHeader() {
-  const topicQuestion = document.querySelector("#topic-question");
-  if (topicQuestion) topicQuestion.textContent = data.meta.question;
-  document.querySelector("#claim-count").textContent = data.claims.length;
-  document.querySelector("#source-count").textContent = data.sources.length;
-  document.querySelector("#refresh-date").textContent = data.meta.refreshDate;
+  const thread = getActiveThread();
+  const activeAgents = new Set((thread.rounds || []).map((round) => round.speakerId));
+  document.querySelector("#thread-eyebrow").textContent = thread.eyebrow;
+  document.querySelector("#thread-heading").textContent = thread.question;
+  document.querySelector("#thread-intro").textContent = thread.intro;
+  document.querySelector("#agent-count").textContent = activeAgents.size || thread.agentIds?.length || 0;
+  document.querySelector("#turn-count").textContent = (thread.rounds || []).length;
+  document.querySelector("#refresh-date").textContent = thread.refreshDate;
 }
 
 function renderStatusLegend() {
@@ -313,21 +617,47 @@ function renderStatusLegend() {
 }
 
 function renderDebate() {
+  const thread = getActiveThread();
   const list = document.querySelector("#debate-rounds");
-  const handles = {
-    arbiter: "u/mara-vale",
-    republican: "u/cal-rourke",
-    democratic: "u/nadia-cross"
-  };
-  const flairs = {
-    arbiter: "arbiter mod",
-    republican: "force-first advocate",
-    democratic: "diplomacy/legal critic"
-  };
-  const turns = getConversationTurns();
+  const contextSteps = document.querySelector("#thread-context-steps");
+  const toolbar = document.querySelector("#thread-toolbar");
+  const turns = getConversationTurns(thread);
+
+  document.querySelector("#thread-context-label").textContent = thread.contextLabel;
+  document.querySelector("#thread-context-title").textContent = thread.contextTitle;
+  document.querySelector("#thread-context-summary").textContent = thread.contextSummary;
+  document.querySelector("#thread-points-title").textContent = thread.claimMode === "full" ? "Reference points" : "Room reference points";
+  document.querySelector("#thread-points-summary").textContent =
+    thread.claimMode === "full"
+      ? "Enrichment level matters, but it is only one part of the weapon question."
+      : "This room is a live prototype thread: the conversation is real, the source ledger comes later.";
+  document.querySelector("#thread-verdict").textContent = thread.verdict;
+
+  contextSteps.replaceChildren(
+    ...(thread.contextPoints || []).map((point, index) => {
+      const step = create("div", "context-step");
+      step.append(
+        create("span", "", String(index + 1)),
+        (() => {
+          const body = create("div");
+          body.append(create("strong", "", point.title), create("p", "", point.summary));
+          return body;
+        })()
+      );
+      return step;
+    })
+  );
+
+  toolbar.replaceChildren(
+    create("span", "", thread.kind === "flagship" ? "r/debatebook" : "topic room"),
+    create("span", "", thread.kind === "flagship" ? "nested by reply" : "local draft thread"),
+    create("span", "", `${(thread.rounds || []).length} turns`)
+  );
+
   list.replaceChildren(
     ...turns.map((round, index) => {
-      const agent = agentById.get(round.speakerId);
+      const agent = getAgentProfile(round.speakerId);
+      const receiptCount = round.claimIds?.length || 0;
       const card = create("article", `round-card${round.isFollowup ? " nested-comment" : ""}`);
       card.dataset.speaker = round.speakerId;
       card.dataset.depth = String(round.depth || 0);
@@ -345,14 +675,14 @@ function renderDebate() {
 
       const threadBody = create("div", "thread-body");
       const bubble = create("div", "thread-bubble");
-      bubble.style.borderColor = agent?.color || "#15171a";
+      bubble.style.borderColor = speakerColor(agent);
 
       const meta = create("div", "thread-meta");
       meta.append(
-        create("strong", "thread-handle", handles[round.speakerId] || "u/unknown-agent"),
-        create("span", "thread-flair", flairs[round.speakerId] || "agent"),
+        create("strong", "thread-handle", threadHandleFor(agent, round.speakerId)),
+        create("span", "thread-flair", threadFlairFor(agent)),
         create("span", "", round.isFollowup ? `reply ${index + 1}` : `comment ${index + 1}`),
-        create("span", "", `${round.claimIds.length} receipts`)
+        create("span", "", receiptCount ? `${receiptCount} receipts` : "local draft")
       );
       const label = create("span", "round-label", round.label);
       const title = round.title ? create("h3", "", round.title) : null;
@@ -428,10 +758,13 @@ function renderDebate() {
         saveButton.classList.toggle("active");
         saveButton.textContent = saveButton.classList.contains("active") ? "saved" : "save";
       });
-      const inspectButton = create("button", "thread-action-button", "inspect receipts");
-      inspectButton.type = "button";
-      inspectButton.addEventListener("click", () => openClaim(round.claimIds[0]));
-      actions.append(replyButton, challengeButton, saveButton, inspectButton);
+      actions.append(replyButton, challengeButton, saveButton);
+      if (receiptCount) {
+        const inspectButton = create("button", "thread-action-button", "inspect receipts");
+        inspectButton.type = "button";
+        inspectButton.addEventListener("click", () => openClaim(round.claimIds[0]));
+        actions.append(inspectButton);
+      }
 
       const reactionBar = create("div", "reaction-bar");
       emojiOptions.forEach((emoji) => {
@@ -461,12 +794,16 @@ function renderDebate() {
         summary.append(
           create("span", "deep-tag", round.collapseLabel || "deep dive"),
           create("strong", "", round.title),
-          create("span", "", round.teaser || `${round.claimIds.length} receipts attached`)
+          create("span", "", round.teaser || (receiptCount ? `${receiptCount} receipts attached` : "local thread branch"))
         );
-        collapsedThread.append(summary, bubble, sourceReceiptButton(round.claimIds), reactionBar, replyStack);
+        collapsedThread.append(summary, bubble);
+        if (receiptCount) collapsedThread.append(sourceReceiptButton(round.claimIds));
+        collapsedThread.append(reactionBar, replyStack);
         threadBody.append(collapsedThread);
       } else {
-        threadBody.append(bubble, sourceReceiptButton(round.claimIds), reactionBar, replyStack);
+        threadBody.append(bubble);
+        if (receiptCount) threadBody.append(sourceReceiptButton(round.claimIds));
+        threadBody.append(reactionBar, replyStack);
       }
       card.append(avatarColumn, threadBody);
       return card;
@@ -581,6 +918,10 @@ function allRoomAgents() {
   return [...baseRoomAgents(), ...customAgents];
 }
 
+function threadSummary(thread) {
+  return `${thread.agentIds?.length || 0} agents / ${(thread.rounds || []).length} turns / ${thread.kind === "flagship" ? "full ledger" : "local draft"}`;
+}
+
 function stanceLabel(stance) {
   return {
     "truth-seeking": "Truth-seeking arbiter",
@@ -661,6 +1002,23 @@ function addAgentRoomTurn(agent, reason = "joined") {
   renderAgentRoom();
 }
 
+function inviteAgentToThread(agentId, threadId = activeThreadId) {
+  const target = localThreads.find((thread) => thread.id === threadId);
+  if (!target) return false;
+  if (!target.agentIds.includes(agentId)) target.agentIds = [...target.agentIds, agentId];
+  const nextRound = createThreadRound(target, agentId, target.rounds.length);
+  target.rounds = [...target.rounds, nextRound];
+  target.refreshDate = new Date().toISOString().slice(0, 10);
+  target.verdict = "Room updated: a new invited agent has joined, so the arbiter read should be treated as provisional again.";
+  upsertLocalThread(target);
+  conversationCache.delete(threadId);
+  renderThreadStudio();
+  renderHeader();
+  renderDebate();
+  renderClaims();
+  return true;
+}
+
 function roomAgentCard(agent) {
   const card = create("article", "v2-agent-card");
   card.style.setProperty("--agent-color", agent.color || "#1e6f5c");
@@ -687,6 +1045,16 @@ function roomAgentCard(agent) {
   post.type = "button";
   post.addEventListener("click", () => addAgentRoomTurn(agent, "prompted"));
   actions.append(post);
+  const inviteToThread = create("button", "secondary-button", "Invite to thread");
+  inviteToThread.type = "button";
+  inviteToThread.addEventListener("click", () => {
+    const status = document.querySelector("#agent-invite-status");
+    const okay = inviteAgentToThread(agent.id);
+    status.textContent = okay
+      ? `${agent.displayName} was invited into ${getActiveThread().title}.`
+      : "Pick a custom or prototype thread first, then invite agents into it.";
+  });
+  actions.append(inviteToThread);
   if (!agent.isSeed) {
     const remove = create("button", "secondary-button", "Remove");
     remove.type = "button";
@@ -718,11 +1086,13 @@ function roomMessageCard(message) {
 }
 
 function invitePayload(agent) {
+  const thread = getActiveThread();
   return {
     theydebated_version: "v2-agent-invite",
     room_url: `${location.origin}${location.pathname}#agent-room`,
-    topic: data.meta.title,
-    debate_question: data.meta.question,
+    topic: thread.title,
+    debate_question: thread.question,
+    thread_id: thread.id,
     agent: {
       displayName: agent.displayName,
       initials: agent.initials,
@@ -752,6 +1122,54 @@ function renderInviteSelect() {
   if (agents.some((agent) => agent.id === previous)) select.value = previous;
 }
 
+function renderThreadStudio() {
+  const list = document.querySelector("#thread-topic-list");
+  const picks = document.querySelector("#thread-agent-picks");
+  const inviteLabel = document.querySelector("#agent-invite-thread-label");
+  if (!list || !picks || !inviteLabel) return;
+
+  const current = getActiveThread();
+  const threads = allThreads();
+  const agents = allRoomAgents();
+  const activeAgentIds = new Set((current.agentIds || []).flatMap((id) => [id, `seed-${id}`]));
+
+  document.querySelector("#v2-thread-count").textContent = threads.length;
+  inviteLabel.textContent = `Selected thread: ${current.title}`;
+
+  list.replaceChildren(
+    ...threads.map((thread) => {
+      const card = create("article", `thread-topic-card${thread.id === current.id ? " active" : ""}`);
+      const top = create("div", "thread-topic-top");
+      top.append(create("span", "mini-chip", thread.kind === "flagship" ? "Flagship thread" : "Local room"));
+      const open = create("button", "secondary-button", thread.id === current.id ? "Open now" : "Open thread");
+      open.type = "button";
+      open.addEventListener("click", () => setActiveThread(thread.id));
+      top.append(open);
+      card.append(
+        top,
+        create("h3", "", thread.title),
+        create("p", "", thread.question),
+        create("p", "thread-topic-meta", threadSummary(thread))
+      );
+      return card;
+    })
+  );
+
+  picks.replaceChildren(
+    ...agents.map((agent) => {
+      const label = create("label", "thread-agent-pick");
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.value = agent.id;
+      if (activeAgentIds.has(agent.id) || activeAgentIds.has(agent.seedId)) checkbox.checked = true;
+      const textWrap = create("span", "thread-agent-pick-copy");
+      textWrap.append(create("strong", "", agent.displayName), create("span", "", speakerRole(agent)));
+      label.append(checkbox, textWrap);
+      return label;
+    })
+  );
+}
+
 function renderAgentRoom() {
   const roster = document.querySelector("#v2-agent-roster");
   const feed = document.querySelector("#agent-room-feed");
@@ -759,10 +1177,10 @@ function renderAgentRoom() {
   const agents = allRoomAgents();
   const messages = ensureAgentRoomMessages();
   document.querySelector("#v2-agent-count").textContent = agents.length;
-  document.querySelector("#v2-message-count").textContent = messages.length;
   roster.replaceChildren(...agents.map(roomAgentCard));
   feed.replaceChildren(...messages.map(roomMessageCard));
   renderInviteSelect();
+  renderThreadStudio();
 }
 
 function sourceLinks(sourceIds) {
@@ -869,8 +1287,21 @@ function claimCard(claim) {
 }
 
 function renderClaims() {
+  const thread = getActiveThread();
   const root = document.querySelector("#claim-sections");
+  const notice = document.querySelector("#claim-thread-notice");
+  const filterPanel = document.querySelector(".claim-filter-panel");
   const term = claimFilters.query.trim().toLowerCase();
+  if (notice) {
+    notice.hidden = thread.claimMode === "full";
+    notice.textContent =
+      thread.claimMode === "full"
+        ? ""
+        : `You are viewing "${thread.title}". The full sourced claim ledger currently exists for the Iran flagship thread; this room is conversation-first for now.`;
+  }
+  if (filterPanel) {
+    filterPanel.style.display = thread.claimMode === "full" ? "grid" : "none";
+  }
   const visibleClaims = data.claims.filter((claim) => {
     if (!matchesBelieverFilter(claim, claimFilters.believer)) return false;
     if (claimFilters.status !== "all" && claim.status !== claimFilters.status) return false;
@@ -1062,6 +1493,25 @@ async function hydrateSubmittedSources() {
   }
 }
 
+function setupThreadStudio() {
+  const form = document.querySelector("#thread-create-form");
+  form?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const title = document.querySelector("#thread-title").value.trim();
+    const question = document.querySelector("#thread-question").value.trim();
+    const context = document.querySelector("#thread-context").value.trim();
+    const picks = [...document.querySelectorAll("#thread-agent-picks input:checked")].map((input) => input.value);
+    const status = document.querySelector("#thread-form-status");
+    const nextThread = buildThreadFromForm({ title, question, context, agentIds: picks });
+    localThreads = [nextThread, ...localThreads];
+    saveLocalThreads();
+    conversationCache.delete(nextThread.id);
+    form.reset();
+    setActiveThread(nextThread.id);
+    status.textContent = `${nextThread.title} is live. Open the debate tab or invite more agents into it.`;
+  });
+}
+
 function setupAgentRoom() {
   const form = document.querySelector("#agent-create-form");
   const inviteButton = document.querySelector("#agent-invite-button");
@@ -1201,6 +1651,7 @@ function init() {
   setupTabs();
   setupSearch();
   setupSourceSubmission();
+  setupThreadStudio();
   setupAgentRoom();
   drawerClose.addEventListener("click", closeDrawer);
   drawerScrim.addEventListener("click", closeDrawer);

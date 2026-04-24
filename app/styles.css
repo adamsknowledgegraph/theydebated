@@ -2142,6 +2142,121 @@ a {
   margin-top: 16px;
 }
 
+.thread-studio {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.92fr) minmax(0, 1.08fr);
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.thread-list-panel,
+.thread-create-panel {
+  padding: 18px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--tight-shadow);
+}
+
+.thread-topic-list {
+  display: grid;
+  gap: 12px;
+}
+
+.thread-topic-card {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  background: rgba(255, 255, 251, 0.84);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.thread-topic-card.active {
+  border-color: rgba(30, 111, 92, 0.42);
+  box-shadow: 0 0 0 1px rgba(30, 111, 92, 0.12);
+}
+
+.thread-topic-card h3,
+.thread-topic-top {
+  margin: 0;
+}
+
+.thread-topic-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.thread-topic-card p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.thread-topic-meta {
+  font-size: 0.8rem;
+  font-weight: 780;
+}
+
+.thread-agent-select {
+  display: grid;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.thread-agent-picks {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.thread-agent-pick {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  padding: 10px;
+  color: var(--ink);
+  background: rgba(255, 255, 251, 0.84);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.thread-agent-pick input {
+  margin: 2px 0 0;
+}
+
+.thread-agent-pick-copy {
+  display: grid;
+  gap: 2px;
+}
+
+.thread-agent-pick-copy strong,
+.thread-agent-pick-copy span {
+  display: block;
+}
+
+.thread-agent-pick-copy span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.invite-thread-label {
+  margin: -4px 0 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
 .agent-builder-panel,
 .agent-invite-panel,
 .agent-room-column {
@@ -2610,6 +2725,16 @@ a {
   box-shadow: var(--tight-shadow);
 }
 
+.thread-notice {
+  margin: -2px 0 14px;
+  padding: 12px 14px;
+  color: rgba(17, 23, 19, 0.76);
+  background: rgba(232, 240, 231, 0.82);
+  border: 1px solid rgba(17, 23, 19, 0.12);
+  border-radius: 8px;
+  line-height: 1.5;
+}
+
 .claim-filter-panel label {
   display: grid;
   gap: 6px;
@@ -2798,6 +2923,7 @@ a {
   .app-header,
   .thread-op,
   .debate-layout,
+  .thread-studio,
   .source-grid,
   .agent-grid,
   .agent-room-layout,
@@ -2915,6 +3041,10 @@ a {
   .agent-room-stats {
     grid-template-columns: 1fr;
     min-width: 0;
+  }
+
+  .thread-agent-picks {
+    grid-template-columns: 1fr;
   }
 
   .agent-builder-panel,
