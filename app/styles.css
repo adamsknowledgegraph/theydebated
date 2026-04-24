@@ -741,12 +741,20 @@ a {
   padding: 22px 0 56px;
 }
 
+.thread-stage-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  gap: 24px;
+  align-items: start;
+  margin: 10px 0 16px;
+}
+
 .app-header {
   position: relative;
   display: grid;
   gap: 14px;
-  padding: 8px 0 16px;
-  border-bottom: 1px solid var(--line);
+  padding: 0;
+  border-bottom: 0;
 }
 
 .title-block h2 {
@@ -792,6 +800,34 @@ a {
   background: transparent;
   border: 0;
   border-radius: 0;
+  box-shadow: none;
+}
+
+.thread-nav {
+  position: sticky;
+  top: 16px;
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  justify-self: end;
+  width: 100%;
+  max-width: 240px;
+  margin: 0;
+  padding: 12px;
+  background: rgba(255, 255, 251, 0.82);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow: var(--tight-shadow);
+}
+
+.thread-nav .tab-button {
+  width: 100%;
+  justify-content: flex-start;
+  min-height: 40px;
+  padding: 10px 14px;
+  border-color: transparent;
+  border-radius: 12px;
+  background: transparent;
   box-shadow: none;
 }
 
@@ -849,10 +885,6 @@ a {
 
 .section-heading.compact {
   margin-top: 0;
-}
-
-.debate-heading {
-  margin: 0 0 10px;
 }
 
 .section-intro {
@@ -2978,6 +3010,7 @@ a {
 }
 
 @media (max-width: 960px) {
+  .thread-stage-top,
   .app-header,
   .debate-layout,
   .thread-directory-grid,
@@ -3020,6 +3053,34 @@ a {
     justify-content: center;
   }
 
+  .thread-stage-top {
+    gap: 16px;
+    margin-bottom: 12px;
+  }
+
+  .thread-nav {
+    position: static;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-self: stretch;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .thread-nav .tab-button {
+    width: auto;
+    min-height: 36px;
+    padding: 7px 12px;
+    background: rgba(255, 255, 251, 0.72);
+    box-shadow: 0 1px 0 rgba(17, 23, 19, 0.04);
+  }
+
   .hero-scene {
     width: min(760px, 100%);
     min-height: 620px;
@@ -3055,13 +3116,13 @@ a {
     padding-top: 10px;
   }
 
-  .tabs {
+  .thread-nav {
     overflow-x: auto;
     flex-wrap: nowrap;
     margin: 12px 0 14px;
   }
 
-  .tab-button {
+  .thread-nav .tab-button {
     white-space: nowrap;
   }
 
