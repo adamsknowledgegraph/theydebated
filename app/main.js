@@ -12,6 +12,7 @@ const statusLabels = {
 const claimById = new Map(data.claims.map((claim) => [claim.id, claim]));
 const sourceById = new Map(data.sources.map((source) => [source.id, source]));
 const agentById = new Map(data.agents.map((agent) => [agent.id, agent]));
+const allDebateRounds = data.allDebateRounds || data.debateRounds;
 
 const drawer = document.querySelector("#claim-drawer");
 const drawerBody = document.querySelector("#drawer-body");
@@ -26,7 +27,9 @@ const storageKeys = {
   customAgents: "debatebook.customAgents.v2",
   agentRoomMessages: "debatebook.agentRoomMessages.v2",
   localThreads: "debatebook.localThreads.v1",
-  activeThreadId: "debatebook.activeThreadId.v1"
+  activeThreadId: "debatebook.activeThreadId.v2",
+  topicProposals: "debatebook.topicProposals.v1",
+  topicVoteState: "debatebook.topicVoteState.v1"
 };
 
 const emojiOptions = ["👍", "🤔", "🔥", "🧾", "👀", "⚖️"];
@@ -36,15 +39,78 @@ let submittedSources = loadJson(storageKeys.submittedSources, []);
 let customAgents = loadJson(storageKeys.customAgents, []);
 let agentRoomMessages = loadJson(storageKeys.agentRoomMessages, null);
 let localThreads = loadJson(storageKeys.localThreads, null);
-let activeThreadId = loadJson(storageKeys.activeThreadId, "iran-flagship");
+let activeThreadId = loadJson(storageKeys.activeThreadId, "us-iran-war");
+let topicProposals = loadJson(storageKeys.topicProposals, null);
+let topicVoteState = loadJson(storageKeys.topicVoteState, {});
 const conversationCache = new Map();
-let revealObserver = null;
 let claimFilters = {
   query: "",
   believer: "all",
   status: "all",
   claimant: "all"
 };
+
+function seedTopicProposals() {
+  return [
+    {
+      id: "trade-tariffs",
+      title: "U.S.-China tariff escalation",
+      question:
+        "Do escalating tariffs on Chinese goods strengthen U.S. leverage, or mostly raise costs without changing the strategic balance?",
+      whyNow:
+        "Trade and industrial policy are back at the center of geopolitical argument, and both parties keep framing economics as national security.",
+      evidenceLane: "Tariff schedules, import-price effects, supply-chain shifts, and allied responses.",
+      baseVotes: 34,
+      createdAt: todayIso()
+    },
+    {
+      id: "gaza-ceasefire",
+      title: "Gaza cease-fire diplomacy",
+      question:
+        "Are U.S. and regional cease-fire efforts materially changing the trajectory of the war, or mostly managing headlines while the battlefield logic stays the same?",
+      whyNow:
+        "Every new negotiation round creates sweeping public claims about leverage, humanitarian pauses, and whether diplomacy is actually moving the parties.",
+      evidenceLane: "Negotiation drafts, humanitarian access figures, mediator statements, and battlefield outcomes.",
+      baseVotes: 29,
+      createdAt: todayIso()
+    },
+    {
+      id: "europe-defense",
+      title: "Europe defense spending",
+      question:
+        "Should Europe ramp defense spending much faster over the next few years, or would speed mostly create waste without near-term readiness gains?",
+      whyNow:
+        "European security debates keep colliding with fiscal constraints, burden-sharing demands, and pressure to show visible deterrence quickly.",
+      evidenceLane: "Budget commitments, procurement lead times, readiness data, and NATO planning assumptions.",
+      baseVotes: 23,
+      createdAt: todayIso()
+    },
+    {
+      id: "chip-controls",
+      title: "AI chip export controls",
+      question:
+        "Are AI chip export controls actually slowing frontier model development, or just reshuffling supply chains and political leverage?",
+      whyNow:
+        "Compute is still treated as a choke point, but the public argument mixes technical constraints, geopolitics, and industrial policy in messy ways.",
+      evidenceLane: "Chip export rules, compute availability, cloud workarounds, and model-training bottlenecks.",
+      baseVotes: 19,
+      createdAt: todayIso()
+    }
+  ];
+}
+
+function saveTopicProposals() {
+  saveJson(storageKeys.topicProposals, topicProposals);
+}
+
+function saveTopicVoteState() {
+  saveJson(storageKeys.topicVoteState, topicVoteState);
+}
+
+if (!Array.isArray(topicProposals)) {
+  topicProposals = seedTopicProposals();
+  saveTopicProposals();
+}
 
 function text(value) {
   return String(value ?? "");
@@ -76,6 +142,17 @@ function saveLocalThreads() {
 
 function saveActiveThreadId() {
   saveJson(storageKeys.activeThreadId, activeThreadId);
+}
+
+function todayIso() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function slugify(value) {
+  return text(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
 }
 
 function statusClass(status) {
@@ -180,30 +257,7 @@ function agentPortrait(agent) {
 }
 
 function setupScrollReveal() {
-  const cards = [...document.querySelectorAll(".round-card")];
-  if (revealObserver) revealObserver.disconnect();
-
-  if (!("IntersectionObserver" in window)) {
-    cards.forEach((card) => card.classList.add("is-visible"));
-    return;
-  }
-
-  revealObserver = new IntersectionObserver(
-    (entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add("is-visible");
-          revealObserver.unobserve(entry.target);
-        }
-      });
-    },
-    { rootMargin: "0px 0px -12% 0px", threshold: 0.16 }
-  );
-
-  cards.forEach((card, index) => {
-    card.style.transitionDelay = `${Math.min(index * 35, 260)}ms`;
-    revealObserver.observe(card);
-  });
+  return;
 }
 
 function getConversationTurns(thread = getActiveThread()) {
@@ -340,16 +394,23 @@ function threadFlairFor(agent) {
   return speakerRole(agent).toLowerCase();
 }
 
-function baseThreadCatalog() {
+function flagshipThreads() {
+  if (Array.isArray(data.threadCatalog) && data.threadCatalog.length) {
+    return data.threadCatalog.map((thread) => ({
+      ...thread,
+      rounds: (thread.rounds || []).map((round) => ({ ...round }))
+    }));
+  }
+
   return [
     {
       id: "iran-flagship",
       kind: "flagship",
       title: data.meta.title,
-      eyebrow: "First public thread / Iran nuclear negotiations",
+      eyebrow: "Thread one / Iran nuclear negotiations",
       question: "Was Iran actually close to a nuclear weapon?",
       intro:
-        "The prototype debate asks whether Iran's 60% enriched uranium stockpile meant a near-term bomb, a severe breakout risk, or a political claim that outran the public evidence.",
+        "This first sourced thread asks what the public record actually proved about Iran's uranium stockpile, inspections, breakout risk, and whether 'near-bomb' rhetoric outran the evidence.",
       contextLabel: "Evidence frame / before the agents answer",
       contextTitle: "Quick context before the debate",
       contextSummary:
@@ -374,7 +435,12 @@ function baseThreadCatalog() {
       claimMode: "full",
       rounds: data.debateRounds,
       agentIds: ["arbiter", "republican", "democratic"]
-    },
+    }
+  ];
+}
+
+function builtInPrototypeThreads() {
+  return [
     {
       id: "ai-chip-controls",
       kind: "prototype",
@@ -489,9 +555,7 @@ function baseThreadCatalog() {
 }
 
 function seedLocalThreads() {
-  return baseThreadCatalog()
-    .filter((thread) => thread.kind !== "flagship")
-    .map((thread) => JSON.parse(JSON.stringify(thread)));
+  return builtInPrototypeThreads().map((thread) => JSON.parse(JSON.stringify(thread)));
 }
 
 if (!Array.isArray(localThreads)) {
@@ -500,14 +564,18 @@ if (!Array.isArray(localThreads)) {
 }
 
 function allThreads() {
-  return [baseThreadCatalog()[0], ...localThreads];
+  return [...flagshipThreads(), ...localThreads];
+}
+
+function publicThreads() {
+  return flagshipThreads();
 }
 
 function getActiveThread() {
-  const threads = allThreads();
+  const threads = publicThreads();
   const active = threads.find((thread) => thread.id === activeThreadId);
   if (active) return active;
-  activeThreadId = "iran-flagship";
+  activeThreadId = threads[0]?.id || "iran-flagship";
   saveActiveThreadId();
   return threads[0];
 }
@@ -515,10 +583,142 @@ function getActiveThread() {
 function setActiveThread(threadId) {
   activeThreadId = threadId;
   saveActiveThreadId();
+  renderLandingMeta();
+  renderThreadDirectory();
   renderThreadStudio();
   renderHeader();
   renderDebate();
   renderClaims();
+  renderSources();
+}
+
+function evidenceThreadFor(thread) {
+  if (!thread) return null;
+  if (thread.claimMode === "full") return thread;
+  if (!thread.sourceThreadId) return null;
+  return flagshipThreads().find((candidate) => candidate.id === thread.sourceThreadId) || null;
+}
+
+function threadClaims(thread) {
+  const evidenceThread = evidenceThreadFor(thread);
+  if (!evidenceThread) return [];
+  return data.claims.filter((claim) => claim.threadId === evidenceThread.id);
+}
+
+function threadSources(thread) {
+  const evidenceThread = evidenceThreadFor(thread);
+  if (!evidenceThread) return [];
+  const ids = new Set();
+  threadClaims(thread).forEach((claim) => {
+    claim.evidence_source_ids.forEach((sourceId) => ids.add(sourceId));
+    claim.counter_source_ids.forEach((sourceId) => ids.add(sourceId));
+  });
+  return data.sources.filter((source) => source.threadId === evidenceThread.id || ids.has(source.id));
+}
+
+function threadStats(thread) {
+  const turns = (thread.rounds || []).length;
+  const agents = new Set((thread.rounds || []).map((round) => round.speakerId)).size || thread.agentIds?.length || 0;
+  const evidenceThread = evidenceThreadFor(thread);
+  const claims = evidenceThread ? threadClaims(thread).length : 0;
+  const sources = evidenceThread ? threadSources(thread).length : 0;
+  return { turns, agents, claims, sources };
+}
+
+function threadCardMeta(thread) {
+  const stats = threadStats(thread);
+  if (thread.claimMode === "full") {
+    return `${stats.agents} agents / ${stats.turns} turns / ${stats.claims} claims / ${stats.sources} sources`;
+  }
+  if (thread.sourceThreadId && stats.claims) {
+    return `${stats.agents} agents / ${stats.turns} turns / branch room + ${stats.claims} source claims`;
+  }
+  return `${stats.agents} agents / ${stats.turns} turns / local draft room`;
+}
+
+function threadKindLabel(thread) {
+  if (thread.claimMode === "full") return "Public debate";
+  if (thread.sourceThreadId) return "Open room branch";
+  return "Open room";
+}
+
+function voteCloseAt() {
+  const now = new Date();
+  const close = new Date(now);
+  close.setHours(18, 0, 0, 0);
+  if (now >= close) close.setDate(close.getDate() + 1);
+  return close;
+}
+
+function voteCloseLabel() {
+  return voteCloseAt().toLocaleString([], {
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
+
+function proposalVoteTotal(proposal) {
+  return (proposal.baseVotes || 0) + (topicVoteState[proposal.id] ? 1 : 0);
+}
+
+function sortedTopicProposals() {
+  return [...topicProposals].sort((left, right) => {
+    const delta = proposalVoteTotal(right) - proposalVoteTotal(left);
+    if (delta) return delta;
+    return text(left.title).localeCompare(text(right.title));
+  });
+}
+
+function renderLandingMeta() {
+  const landingMeta = document.querySelector("#landing-meta");
+  const directoryMeta = document.querySelector("#thread-directory-meta");
+  const threads = publicThreads();
+  const claims = data.claims.length;
+  const proposals = Array.isArray(topicProposals) ? topicProposals.length : 0;
+
+  if (landingMeta) {
+    landingMeta.textContent = `Daily topic vote open / ${threads.length} live debates / ${claims} tracked claims`;
+  }
+
+  if (directoryMeta) {
+    directoryMeta.textContent = `${threads.length} live debates / ${proposals} proposed next topics / evidence on every sourced thread`;
+  }
+}
+
+function renderThreadDirectory() {
+  const grid = document.querySelector("#thread-directory-grid");
+  if (!grid) return;
+
+  const current = getActiveThread();
+  const threads = publicThreads();
+
+  grid.replaceChildren(
+    ...threads.map((thread) => {
+      const card = create("article", `thread-directory-card${thread.id === current.id ? " active" : ""}`);
+      const top = create("div", "thread-directory-top");
+      top.append(
+        create("span", "thread-directory-kind", threadKindLabel(thread)),
+        create("span", "thread-directory-date", `Updated ${thread.refreshDate}`)
+      );
+      const title = create("h3", "", thread.title);
+      const question = create("p", "thread-directory-question", thread.question);
+      const intro = create("p", "thread-directory-intro", thread.intro);
+      const meta = create("p", "thread-directory-stats", threadCardMeta(thread));
+      const button = create(
+        "button",
+        thread.id === current.id ? "primary-button" : "secondary-button",
+        thread.id === current.id ? "Reading now" : "Read debate"
+      );
+      button.type = "button";
+      button.addEventListener("click", () => {
+        setActiveThread(thread.id);
+        document.querySelector("#active-thread-anchor")?.scrollIntoView({ block: "start" });
+      });
+      card.append(top, title, question, intro, meta, button);
+      return card;
+    })
+  );
 }
 
 function upsertLocalThread(nextThread) {
@@ -541,6 +741,17 @@ function orderedThreadAgents(agentIds) {
     "seed-democratic": 2
   };
   return [...agentIds].sort((a, b) => (weights[a] ?? 5) - (weights[b] ?? 5));
+}
+
+function defaultContextPoints(count = 0) {
+  return [
+    { title: "Question first.", summary: "Keep the room narrow enough that the disagreement is inspectable." },
+    {
+      title: "Invite identifiable agents.",
+      summary: count ? `${count} agents are selected for the opening pass.` : "Connect agents after the room is live."
+    },
+    { title: "Receipts can mature later.", summary: "Local rooms start conversationally, then harden into a sourced ledger." }
+  ];
 }
 
 function threadDraftTitle(agent, index) {
@@ -566,39 +777,114 @@ function createThreadRound(thread, agentId, index) {
   };
 }
 
-function buildThreadFromForm({ title, question, context, agentIds }) {
-  const orderedAgents = orderedThreadAgents(agentIds.length ? agentIds : ["seed-arbiter", "seed-republican", "seed-democratic"]);
-  const id = `thread-${Date.now()}`;
-  const thread = {
+function buildLocalThreadShell({
+  id = `thread-${Date.now()}`,
+  title,
+  question,
+  intro,
+  contextLabel = "Room frame / local draft",
+  contextTitle = "Quick context before the debate",
+  contextSummary,
+  contextPoints = [],
+  pointsTitle = "Room reference points",
+  pointsSummary = "This room is open for new agents, fresh angles, and follow-up argument.",
+  verdict = "Fresh room: no arbiter verdict yet. Invite agents and let the first turns expose the real fault lines.",
+  refreshDate = todayIso(),
+  sourceThreadId = null,
+  agentIds = [],
+  rounds = []
+}) {
+  return {
     id,
     kind: "local",
     title,
-    eyebrow: `Custom topic room / ${title}`,
+    eyebrow: sourceThreadId ? `Open room / ${title}` : `Custom topic room / ${title}`,
+    question,
+    intro: intro || "A user-created room for local agent drafts, invites, and topic exploration.",
+    contextLabel,
+    contextTitle,
+    contextSummary: contextSummary || intro || "This thread is a local draft room. Invite agents and let them stake out their first positions.",
+    contextPoints: contextPoints.length ? contextPoints : defaultContextPoints(agentIds.length),
+    pointsTitle,
+    pointsSummary,
+    verdict,
+    refreshDate,
+    claimMode: "local",
+    sourceThreadId,
+    agentIds,
+    rounds
+  };
+}
+
+function buildThreadFromForm({ title, question, context, agentIds }) {
+  const orderedAgents = orderedThreadAgents(agentIds.length ? agentIds : ["seed-arbiter", "seed-republican", "seed-democratic"]);
+  const id = `thread-${Date.now()}`;
+  return buildLocalThreadShell({
+    id,
+    title,
     question,
     intro: context || "A user-created room for local agent drafts, invites, and topic exploration.",
-    contextLabel: "Room frame / local draft",
-    contextTitle: "Quick context before the debate",
     contextSummary: context || "This thread is a local draft room. Invite agents and let them stake out their first positions.",
     contextPoints: [
       { title: "Question first.", summary: "Start with a crisp room prompt." },
       { title: "Invite the right agents.", summary: `${orderedAgents.length} agents selected for the opening pass.` },
       { title: "Let the room sharpen.", summary: "The first turns are for framing, not final truth." }
     ],
-    verdict: "Fresh room: no arbiter verdict yet. Invite agents and let the first turns expose the real fault lines.",
-    refreshDate: new Date().toISOString().slice(0, 10),
-    claimMode: "local",
     agentIds: orderedAgents,
     rounds: orderedAgents.map((agentId, index) => createThreadRound({ id, question }, agentId, index))
-  };
-  return thread;
+  });
+}
+
+function branchThreadFromSource(sourceThread) {
+  const existing = localThreads.find((candidate) => candidate.sourceThreadId === sourceThread.id);
+  if (existing) return existing;
+
+  const branchId = `room-${sourceThread.id}-${Date.now()}`;
+  const seedAgents = orderedThreadAgents(
+    (sourceThread.agentIds || []).map((agentId) => (agentById.has(agentId) ? `seed-${agentId}` : agentId))
+  );
+  const branch = buildLocalThreadShell({
+    id: branchId,
+    title: `${sourceThread.title} / Open room`,
+    question: sourceThread.question,
+    intro:
+      `Local branch from "${sourceThread.title}". The sourced ledger stays intact while new agents can join and push the argument further.`,
+    contextLabel: sourceThread.contextLabel || "Room frame / sourced branch",
+    contextTitle: sourceThread.contextTitle || "Quick context before the debate",
+    contextSummary:
+      sourceThread.contextSummary || sourceThread.intro || "This branch room inherits the source context, then opens itself to new agents.",
+    contextPoints: sourceThread.contextPoints || defaultContextPoints(seedAgents.length),
+    pointsTitle: sourceThread.pointsTitle || "Room reference points",
+    pointsSummary:
+      sourceThread.pointsSummary || "This branch room inherits the sourced frame, then lets new agents extend the debate.",
+    verdict:
+      `Branch room created from "${sourceThread.title}". The sourced thread remains unchanged; this room is where invited agents can join.`,
+    sourceThreadId: sourceThread.id,
+    agentIds: seedAgents,
+    rounds: seedAgents.map((agentId, index) => createThreadRound({ id: branchId, question: sourceThread.question }, agentId, index))
+  });
+  upsertLocalThread(branch);
+  conversationCache.delete(branch.id);
+  return branch;
+}
+
+function ensureEditableThread(threadId = activeThreadId) {
+  const local = localThreads.find((thread) => thread.id === threadId);
+  if (local) return { thread: local, branched: false };
+
+  const source = allThreads().find((thread) => thread.id === threadId);
+  if (!source) return null;
+  return { thread: branchThreadFromSource(source), branched: true };
 }
 
 function renderHeader() {
   const thread = getActiveThread();
   const activeAgents = new Set((thread.rounds || []).map((round) => round.speakerId));
+  const liveDebateCount = document.querySelector("#live-debate-count");
   document.querySelector("#thread-eyebrow").textContent = thread.eyebrow;
   document.querySelector("#thread-heading").textContent = thread.question;
   document.querySelector("#thread-intro").textContent = thread.intro;
+  if (liveDebateCount) liveDebateCount.textContent = String(publicThreads().length);
   document.querySelector("#agent-count").textContent = activeAgents.size || thread.agentIds?.length || 0;
   document.querySelector("#turn-count").textContent = (thread.rounds || []).length;
   document.querySelector("#refresh-date").textContent = thread.refreshDate;
@@ -623,14 +909,17 @@ function renderDebate() {
   const toolbar = document.querySelector("#thread-toolbar");
   const turns = getConversationTurns(thread);
 
-  document.querySelector("#thread-context-label").textContent = thread.contextLabel;
+  document.querySelector("#thread-context-label").textContent =
+    thread.claimMode === "full" ? "Context / before the debate" : "Context / working draft";
   document.querySelector("#thread-context-title").textContent = thread.contextTitle;
   document.querySelector("#thread-context-summary").textContent = thread.contextSummary;
-  document.querySelector("#thread-points-title").textContent = thread.claimMode === "full" ? "Reference points" : "Room reference points";
+  document.querySelector("#thread-points-title").textContent =
+    thread.pointsTitle || (thread.claimMode === "full" ? "Reference points" : "Room reference points");
   document.querySelector("#thread-points-summary").textContent =
-    thread.claimMode === "full"
+    thread.pointsSummary ||
+    (thread.claimMode === "full"
       ? "Enrichment level matters, but it is only one part of the weapon question."
-      : "This room is a live prototype thread: the conversation is real, the source ledger comes later.";
+      : "This room is a live prototype thread: the conversation is real, the source ledger comes later.");
   document.querySelector("#thread-verdict").textContent = thread.verdict;
 
   contextSteps.replaceChildren(
@@ -649,10 +938,31 @@ function renderDebate() {
   );
 
   toolbar.replaceChildren(
-    create("span", "", thread.kind === "flagship" ? "r/debatebook" : "topic room"),
-    create("span", "", thread.kind === "flagship" ? "nested by reply" : "local draft thread"),
+    create("span", "", thread.kind === "flagship" ? "public thread" : "local thread"),
+    create("span", "", "reply + react open"),
+    create("span", "", thread.kind === "flagship" ? "source receipts expandable" : "receipts still forming"),
     create("span", "", `${(thread.rounds || []).length} turns`)
   );
+
+  if (!turns.length) {
+    const empty = create("article", "round-card");
+    const spacer = create("div", "thread-avatar-column");
+    const body = create("div", "thread-body");
+    const bubble = create("div", "thread-bubble");
+    bubble.append(
+      create("span", "round-label", "Room waiting for first turn"),
+      create("h3", "", "No agents have posted here yet"),
+      create(
+        "p",
+        "",
+        "This thread is waiting on the first agent turn. Public threads open once the daily topic vote is settled."
+      )
+    );
+    body.append(bubble);
+    empty.append(spacer, body);
+    list.replaceChildren(empty);
+    return;
+  }
 
   list.replaceChildren(
     ...turns.map((round, index) => {
@@ -867,7 +1177,7 @@ function renderAgents() {
       footer.append(valueRow);
       footer.append(compass(agent));
       const correction = create("div", "agent-correction");
-      correction.append(create("span", "", "Correction history"), create("p", "", agent.correctionHistory[0]));
+      correction.append(create("span", "", "What changes their mind"), create("p", "", agent.correctionHistory[0]));
       footer.append(correction);
       card.append(portraitWrap, cardBody, attributes, footer);
       return card;
@@ -919,7 +1229,7 @@ function allRoomAgents() {
 }
 
 function threadSummary(thread) {
-  return `${thread.agentIds?.length || 0} agents / ${(thread.rounds || []).length} turns / ${thread.kind === "flagship" ? "full ledger" : "local draft"}`;
+  return threadCardMeta(thread);
 }
 
 function stanceLabel(stance) {
@@ -953,6 +1263,13 @@ function makeAgentRoomMessage(agent, reason = "joined") {
   const sources = (agent.sourceDiet || []).slice(0, 3);
   const sourceText = sources.length ? sources.join(" + ") : "no source diet declared yet";
   const biasText = text(agent.biasLens || "not specified yet").replace(/[.\s]+$/, "");
+  const reasonLead = {
+    seed: "Seed agent loaded into the studio.",
+    created: "New agent manifest created locally.",
+    imported: "Shared agent manifest imported into the studio.",
+    joined: "Agent joined the active room and posted an opening angle.",
+    shared: "Agent manifest prepared for sharing."
+  }[reason] || "Agent updated the room.";
   return {
     id: `M-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
     agentId: agent.id,
@@ -970,6 +1287,7 @@ function makeAgentRoomMessage(agent, reason = "joined") {
     }),
     body:
       `Identity prompt: ${agent.identityPrompt}\n\n` +
+      `${reasonLead}\n\n` +
       `${stanceOpening(agent)}\n\n` +
       `My first source diet for this debate: ${sourceText}. Bias lens: ${biasText}.`
   };
@@ -1003,20 +1321,38 @@ function addAgentRoomTurn(agent, reason = "joined") {
 }
 
 function inviteAgentToThread(agentId, threadId = activeThreadId) {
-  const target = localThreads.find((thread) => thread.id === threadId);
-  if (!target) return false;
+  const editable = ensureEditableThread(threadId);
+  if (!editable) return false;
+  const target = editable.thread;
   if (!target.agentIds.includes(agentId)) target.agentIds = [...target.agentIds, agentId];
   const nextRound = createThreadRound(target, agentId, target.rounds.length);
   target.rounds = [...target.rounds, nextRound];
-  target.refreshDate = new Date().toISOString().slice(0, 10);
+  target.refreshDate = todayIso();
   target.verdict = "Room updated: a new invited agent has joined, so the arbiter read should be treated as provisional again.";
   upsertLocalThread(target);
-  conversationCache.delete(threadId);
-  renderThreadStudio();
+  conversationCache.delete(target.id);
+  const invitedAgent = getAgentProfile(agentId);
+  if (invitedAgent) addAgentRoomTurn(invitedAgent, "joined");
+  setActiveThread(target.id);
+  return { thread: target, branched: editable.branched };
+}
+
+function removeCustomAgent(agentId) {
+  customAgents = customAgents.filter((candidate) => candidate.id !== agentId);
+  localThreads = localThreads.map((thread) => ({
+    ...thread,
+    agentIds: (thread.agentIds || []).filter((candidate) => candidate !== agentId),
+    rounds: (thread.rounds || []).filter((round) => round.speakerId !== agentId)
+  }));
+  conversationCache.clear();
+  saveCustomAgents();
+  saveLocalThreads();
+  renderAgentRoom();
+  renderThreadDirectory();
   renderHeader();
   renderDebate();
   renderClaims();
-  return true;
+  renderSources();
 }
 
 function roomAgentCard(agent) {
@@ -1041,28 +1377,28 @@ function roomAgentCard(agent) {
   if (!sourceList.children.length) sourceList.append(create("span", "", "No source diet yet"));
 
   const actions = create("div", "v2-agent-actions");
-  const post = create("button", "secondary-button", "Ask to post");
-  post.type = "button";
-  post.addEventListener("click", () => addAgentRoomTurn(agent, "prompted"));
-  actions.append(post);
-  const inviteToThread = create("button", "secondary-button", "Invite to thread");
+  const inviteToThread = create("button", "secondary-button", "Join active thread");
   inviteToThread.type = "button";
   inviteToThread.addEventListener("click", () => {
     const status = document.querySelector("#agent-invite-status");
-    const okay = inviteAgentToThread(agent.id);
-    status.textContent = okay
-      ? `${agent.displayName} was invited into ${getActiveThread().title}.`
-      : "Pick a custom or prototype thread first, then invite agents into it.";
+    const result = inviteAgentToThread(agent.id);
+    status.textContent = result
+      ? `${agent.displayName} joined ${result.thread.title}${result.branched ? " via a new editable room branch" : ""}.`
+      : "Could not find a room to join yet.";
   });
   actions.append(inviteToThread);
+  const share = create("button", "secondary-button", "Copy manifest");
+  share.type = "button";
+  share.addEventListener("click", () => {
+    const select = document.querySelector("#agent-invite-select");
+    if (select) select.value = agent.id;
+    copyAgentManifest(agent);
+  });
+  actions.append(share);
   if (!agent.isSeed) {
     const remove = create("button", "secondary-button", "Remove");
     remove.type = "button";
-    remove.addEventListener("click", () => {
-      customAgents = customAgents.filter((candidate) => candidate.id !== agent.id);
-      saveCustomAgents();
-      renderAgentRoom();
-    });
+    remove.addEventListener("click", () => removeCustomAgent(agent.id));
     actions.append(remove);
   }
 
@@ -1073,30 +1409,35 @@ function roomAgentCard(agent) {
 function roomMessageCard(message) {
   const card = create("article", "agent-room-message");
   card.style.setProperty("--agent-color", message.color || "#1e6f5c");
+  const reasonLabel = {
+    seed: "seed agent",
+    created: "created locally",
+    imported: "imported manifest",
+    joined: "joined thread",
+    shared: "shared payload"
+  }[message.reason] || "room event";
   const meta = create("div", "thread-meta");
   meta.append(
     create("strong", "thread-handle", message.agentName),
     create("span", "thread-flair", message.roleTitle),
     create("span", "", message.createdAt),
-    create("span", "", message.reason === "seed" ? "seed turn" : "local draft")
+    create("span", "", reasonLabel)
   );
   const body = messageParagraphs(message.body);
   card.append(meta, body);
   return card;
 }
 
-function invitePayload(agent) {
-  const thread = getActiveThread();
+function agentManifest(agent) {
   return {
-    theydebated_version: "v2-agent-invite",
-    room_url: `${location.origin}${location.pathname}#agent-room`,
-    topic: thread.title,
-    debate_question: thread.question,
-    thread_id: thread.id,
+    theydebated_version: "v2-agent-manifest",
+    exported_at: todayIso(),
     agent: {
+      id: agent.id,
       displayName: agent.displayName,
       initials: agent.initials,
       roleTitle: agent.roleTitle,
+      archetype: agent.archetype,
       stance: agent.stance,
       model: agent.model,
       identityPrompt: agent.identityPrompt,
@@ -1105,6 +1446,177 @@ function invitePayload(agent) {
       biasLens: agent.biasLens
     }
   };
+}
+
+function roomInvitePayload(thread = getActiveThread()) {
+  return {
+    theydebated_version: "v2-room-invite",
+    exported_at: todayIso(),
+    room_url: `${location.origin}${location.pathname}#agent-room`,
+    thread: {
+      id: thread.id,
+      title: thread.title,
+      question: thread.question,
+      intro: thread.intro,
+      contextLabel: thread.contextLabel,
+      contextTitle: thread.contextTitle,
+      contextSummary: thread.contextSummary,
+      contextPoints: thread.contextPoints,
+      pointsTitle: thread.pointsTitle,
+      pointsSummary: thread.pointsSummary,
+      sourceThreadId: thread.sourceThreadId || (thread.claimMode === "full" ? thread.id : null),
+      claimMode: thread.claimMode
+    }
+  };
+}
+
+async function writePayloadToBox(selector, payload, successMessage, fallbackMessage, statusSelector = "#agent-invite-status") {
+  const output = document.querySelector(selector);
+  const status = document.querySelector(statusSelector);
+  const value = JSON.stringify(payload, null, 2);
+  if (output) output.value = value;
+  try {
+    await navigator.clipboard.writeText(value);
+    if (status) status.textContent = successMessage;
+  } catch {
+    if (status) status.textContent = fallbackMessage;
+  }
+}
+
+async function copyRoomInvite(thread = getActiveThread()) {
+  await writePayloadToBox(
+    "#room-invite-output",
+    roomInvitePayload(thread),
+    `Room invite copied for ${thread.title}.`,
+    "Room invite generated. Copy it from the box."
+  );
+}
+
+async function copyAgentManifest(agent) {
+  await writePayloadToBox(
+    "#agent-invite-output",
+    agentManifest(agent),
+    `Agent manifest copied for ${agent.displayName}.`,
+    "Agent manifest generated. Copy it from the box."
+  );
+}
+
+function nextAgentId(baseName) {
+  const base = `custom-${slugify(baseName || "agent") || "agent"}`;
+  const ids = new Set(allRoomAgents().map((agent) => agent.id));
+  if (!ids.has(base)) return base;
+  let index = 2;
+  while (ids.has(`${base}-${index}`)) index += 1;
+  return `${base}-${index}`;
+}
+
+function normalizeImportedAgent(rawAgent) {
+  const displayName = text(rawAgent.displayName || rawAgent.name || "Imported agent").trim();
+  const identityPrompt = text(rawAgent.identityPrompt || rawAgent.prompt || "").trim();
+  const fingerprint = `${displayName.toLowerCase()}|${identityPrompt.toLowerCase()}`;
+  const existing = customAgents.find((candidate) => candidate.fingerprint === fingerprint);
+  if (existing) return { agent: existing, created: false };
+
+  const agent = {
+    id: nextAgentId(displayName),
+    displayName,
+    initials: text(rawAgent.initials || initialsFromName(displayName)).slice(0, 2).toUpperCase(),
+    roleTitle: text(rawAgent.roleTitle || rawAgent.archetype || "Imported agent"),
+    archetype: text(rawAgent.archetype || rawAgent.roleTitle || "Imported agent"),
+    identityPrompt,
+    sourceDiet: parseLines(rawAgent.sourceDiet || []),
+    sourceLinks: parseLines(rawAgent.sourceLinks || []),
+    biasLens: text(rawAgent.biasLens || "Imported without a stated bias lens."),
+    stance: rawAgent.stance || "expert",
+    model: rawAgent.model || "human",
+    color: roomColor(customAgents.length + data.agents.length),
+    isSeed: false,
+    fingerprint,
+    importedAt: new Date().toISOString()
+  };
+  customAgents = [agent, ...customAgents];
+  saveCustomAgents();
+  addAgentRoomTurn(agent, "imported");
+  return { agent, created: true };
+}
+
+function importRoomInvite(rawThread) {
+  const sourceId = rawThread.sourceThreadId || (rawThread.claimMode === "full" ? rawThread.id : null);
+  const existingSource = sourceId ? flagshipThreads().find((thread) => thread.id === sourceId) : null;
+  if (existingSource) {
+    setActiveThread(existingSource.id);
+    return { thread: existingSource, created: false, source: true };
+  }
+
+  const existingLocal = localThreads.find((thread) => thread.id === rawThread.id);
+  if (existingLocal) {
+    setActiveThread(existingLocal.id);
+    return { thread: existingLocal, created: false, source: false };
+  }
+
+  const thread = buildLocalThreadShell({
+    id: rawThread.id || `thread-${Date.now()}`,
+    title: rawThread.title || "Imported room",
+    question: rawThread.question || "What should this room debate?",
+    intro: rawThread.intro || "Imported from a shared room invite.",
+    contextLabel: rawThread.contextLabel || "Room frame / imported",
+    contextTitle: rawThread.contextTitle || "Quick context before the debate",
+    contextSummary: rawThread.contextSummary || rawThread.intro || "Imported room ready for agents to join.",
+    contextPoints: rawThread.contextPoints || defaultContextPoints(0),
+    pointsTitle: rawThread.pointsTitle || "Room reference points",
+    pointsSummary: rawThread.pointsSummary || "This imported room is ready for agents to join.",
+    sourceThreadId: rawThread.sourceThreadId || null,
+    agentIds: [],
+    rounds: [],
+    verdict: "Imported room ready. Invite agents to start the public thread."
+  });
+  upsertLocalThread(thread);
+  setActiveThread(thread.id);
+  return { thread, created: true, source: false };
+}
+
+function importSharedPayload(raw) {
+  let payload;
+  try {
+    payload = JSON.parse(raw);
+  } catch {
+    throw new Error("That payload is not valid JSON yet.");
+  }
+  if (payload.theydebated_version === "v2-agent-manifest") {
+    const result = normalizeImportedAgent(payload.agent || {});
+    return {
+      message: result.created
+        ? `${result.agent.displayName} is now connected in your studio.`
+        : `${result.agent.displayName} was already connected here.`
+    };
+  }
+
+  if (payload.theydebated_version === "v2-room-invite") {
+    const result = importRoomInvite(payload.thread || {});
+    return {
+      message: result.source
+        ? `Opened the existing sourced thread "${result.thread.title}".`
+        : result.created
+          ? `Imported the room "${result.thread.title}". Invite agents to start it.`
+          : `Opened the existing room "${result.thread.title}".`
+    };
+  }
+
+  if (payload.theydebated_version === "v2-agent-invite") {
+    const room = importRoomInvite({
+      id: payload.thread_id,
+      title: payload.topic,
+      question: payload.debate_question,
+      intro: `Imported from a legacy invite for ${payload.topic}.`
+    });
+    const imported = normalizeImportedAgent(payload.agent || {});
+    inviteAgentToThread(imported.agent.id, room.thread.id);
+    return {
+      message: `${imported.agent.displayName} was imported from a legacy invite and joined ${room.thread.title}.`
+    };
+  }
+
+  throw new Error("Unsupported payload version.");
 }
 
 function renderInviteSelect() {
@@ -1140,7 +1652,7 @@ function renderThreadStudio() {
     ...threads.map((thread) => {
       const card = create("article", `thread-topic-card${thread.id === current.id ? " active" : ""}`);
       const top = create("div", "thread-topic-top");
-      top.append(create("span", "mini-chip", thread.kind === "flagship" ? "Flagship thread" : "Local room"));
+      top.append(create("span", "mini-chip", threadKindLabel(thread)));
       const open = create("button", "secondary-button", thread.id === current.id ? "Open now" : "Open thread");
       open.type = "button";
       open.addEventListener("click", () => setActiveThread(thread.id));
@@ -1181,6 +1693,74 @@ function renderAgentRoom() {
   feed.replaceChildren(...messages.map(roomMessageCard));
   renderInviteSelect();
   renderThreadStudio();
+}
+
+function renderTopicVote() {
+  const count = document.querySelector("#topic-count");
+  const close = document.querySelector("#topic-close");
+  const leader = document.querySelector("#topic-leader-card");
+  const grid = document.querySelector("#topic-proposal-grid");
+  if (!leader || !grid) return;
+
+  const proposals = sortedTopicProposals();
+  const leading = proposals[0];
+  if (count) count.textContent = String(proposals.length);
+  if (close) close.textContent = voteCloseLabel();
+
+  if (leading) {
+    const leaderMeta = create(
+      "p",
+      "topic-leader-meta",
+      `${proposalVoteTotal(leading)} votes so far. Same three agents tomorrow. Evidence-backed thread.`
+    );
+    leader.replaceChildren(
+      create("h3", "", leading.title),
+      create("p", "topic-proposal-question", leading.question),
+      create("p", "topic-proposal-why", leading.whyNow),
+      leaderMeta,
+      create("p", "topic-proposal-evidence", `Evidence lane: ${leading.evidenceLane}`)
+    );
+  } else {
+    leader.replaceChildren(create("p", "empty-state", "No topic proposals yet."));
+  }
+
+  grid.replaceChildren(
+    ...proposals.map((proposal, index) => {
+      const card = create("article", "topic-proposal-card");
+      const top = create("div", "topic-proposal-top");
+      top.append(create("strong", "", proposal.title), create("span", "topic-vote-total", `${proposalVoteTotal(proposal)} votes`));
+
+      const question = create("p", "topic-proposal-question", proposal.question);
+      const why = create("p", "topic-proposal-why", proposal.whyNow);
+      const evidence = create("p", "topic-proposal-evidence", `Evidence lane: ${proposal.evidenceLane}`);
+
+      const voteRow = create("div", "topic-vote-row");
+      const meta = create(
+        "p",
+        "topic-card-meta",
+        `${index === 0 ? "Currently leading. " : ""}If this wins, the same three agents debate it tomorrow.`
+      );
+      const button = create(
+        "button",
+        topicVoteState[proposal.id] ? "primary-button" : "secondary-button",
+        topicVoteState[proposal.id] ? "Supported" : "Support topic"
+      );
+      button.type = "button";
+      button.addEventListener("click", () => {
+        topicVoteState = {
+          ...topicVoteState,
+          [proposal.id]: !topicVoteState[proposal.id]
+        };
+        saveTopicVoteState();
+        renderLandingMeta();
+        renderTopicVote();
+      });
+      voteRow.append(meta, button);
+
+      card.append(top, question, why, evidence, voteRow);
+      return card;
+    })
+  );
 }
 
 function sourceLinks(sourceIds) {
@@ -1241,7 +1821,7 @@ function openClaim(claimId) {
   moments.append(create("h3", "", "Related debate moments"));
   const momentRow = create("div", "chip-row");
   claim.debate_moment_ids.forEach((momentId) => {
-    const round = data.debateRounds.find((candidate) => candidate.id === momentId);
+    const round = allDebateRounds.find((candidate) => candidate.id === momentId);
     momentRow.append(create("span", "mini-chip", round ? `${momentId}: ${round.label}` : momentId));
   });
   moments.append(momentRow);
@@ -1288,21 +1868,32 @@ function claimCard(claim) {
 
 function renderClaims() {
   const thread = getActiveThread();
+  const evidenceThread = evidenceThreadFor(thread);
   const root = document.querySelector("#claim-sections");
   const notice = document.querySelector("#claim-thread-notice");
   const filterPanel = document.querySelector(".claim-filter-panel");
+  const threadClaimList = threadClaims(thread);
   const term = claimFilters.query.trim().toLowerCase();
   if (notice) {
-    notice.hidden = thread.claimMode === "full";
+    notice.hidden = false;
     notice.textContent =
       thread.claimMode === "full"
-        ? ""
-        : `You are viewing "${thread.title}". The full sourced claim ledger currently exists for the Iran flagship thread; this room is conversation-first for now.`;
+        ? `Viewing the sourced ledger for "${thread.title}". Every claim below belongs to this thread's evidence file.`
+        : evidenceThread
+          ? `You are viewing "${thread.title}", a local room branched from "${evidenceThread.title}". The sourced ledger below comes from the parent thread.`
+          : `You are viewing "${thread.title}". This room is conversation-first for now, so the full sourced claim ledger only exists on the flagship threads.`;
   }
   if (filterPanel) {
-    filterPanel.style.display = thread.claimMode === "full" ? "grid" : "none";
+    filterPanel.style.display = evidenceThread ? "grid" : "none";
   }
-  const visibleClaims = data.claims.filter((claim) => {
+  if (!evidenceThread) {
+    root.replaceChildren(create("p", "empty-state", "No sourced claim ledger yet for this room."));
+    const summary = document.querySelector("#claim-filter-summary");
+    if (summary) summary.textContent = "0 claims shown for this room";
+    return;
+  }
+
+  const visibleClaims = threadClaimList.filter((claim) => {
     if (!matchesBelieverFilter(claim, claimFilters.believer)) return false;
     if (claimFilters.status !== "all" && claim.status !== claimFilters.status) return false;
     if (claimFilters.claimant !== "all" && claim.claimant_type !== claimFilters.claimant) return false;
@@ -1326,7 +1917,7 @@ function renderClaims() {
     if (claimFilters.status !== "all") activeFilters.push(`${statusLabels[claimFilters.status] || claimFilters.status} status`);
     if (claimFilters.claimant !== "all") activeFilters.push(`${titleCase(claimFilters.claimant)} claimants`);
     if (term) activeFilters.push(`matching "${claimFilters.query.trim()}"`);
-    summary.textContent = `${visibleClaims.length} of ${data.claims.length} claims shown${activeFilters.length ? ` - ${activeFilters.join(", ")}` : ""}`;
+    summary.textContent = `${visibleClaims.length} of ${threadClaimList.length} claims shown${activeFilters.length ? ` - ${activeFilters.join(", ")}` : ""}`;
   }
 
   const groups = [
@@ -1348,8 +1939,30 @@ function renderClaims() {
 
 function renderSources() {
   const grid = document.querySelector("#source-grid");
+  const thread = getActiveThread();
+  const evidenceThread = evidenceThreadFor(thread);
+  const kicker = document.querySelector("#source-library-kicker");
+  const title = document.querySelector("#source-library-title");
+  const visibleSources = threadSources(thread);
+
+  if (kicker) {
+    kicker.textContent = evidenceThread ? "Source library" : "Source library / pending";
+  }
+
+  if (title) {
+    title.textContent =
+      evidenceThread
+        ? `Real-world evidence records for ${evidenceThread.title}`
+        : `Source ledger still pending for ${thread.title}`;
+  }
+
+  if (!evidenceThread) {
+    grid.replaceChildren(create("p", "empty-state", "This room does not have a sourced evidence library yet."));
+    return;
+  }
+
   grid.replaceChildren(
-    ...data.sources.map((source) => {
+    ...visibleSources.map((source) => {
       const card = create("article", "source-card");
       const title = create("h3", "", source.title);
       const link = create("a", "", "Open source");
@@ -1493,6 +2106,47 @@ async function hydrateSubmittedSources() {
   }
 }
 
+function setupTopicVote() {
+  const form = document.querySelector("#topic-suggest-form");
+  if (!form) return;
+
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const titleInput = document.querySelector("#topic-title");
+    const questionInput = document.querySelector("#topic-question");
+    const whyNowInput = document.querySelector("#topic-why-now");
+    const evidenceLaneInput = document.querySelector("#topic-evidence-lane");
+    const status = document.querySelector("#topic-form-status");
+
+    const title = titleInput.value.trim();
+    const question = questionInput.value.trim();
+    const whyNow = whyNowInput.value.trim();
+    const evidenceLane = evidenceLaneInput.value.trim();
+
+    const nextProposal = {
+      id: `${slugify(title)}-${Date.now()}`,
+      title,
+      question,
+      whyNow,
+      evidenceLane,
+      baseVotes: 1,
+      createdAt: todayIso()
+    };
+
+    topicProposals = [nextProposal, ...topicProposals];
+    topicVoteState = {
+      ...topicVoteState,
+      [nextProposal.id]: true
+    };
+    saveTopicProposals();
+    saveTopicVoteState();
+    renderLandingMeta();
+    renderTopicVote();
+    form.reset();
+    status.textContent = `${nextProposal.title} is on the board and already has your support.`;
+  });
+}
+
 function setupThreadStudio() {
   const form = document.querySelector("#thread-create-form");
   form?.addEventListener("submit", (event) => {
@@ -1514,7 +2168,10 @@ function setupThreadStudio() {
 
 function setupAgentRoom() {
   const form = document.querySelector("#agent-create-form");
+  const roomInviteButton = document.querySelector("#room-invite-button");
   const inviteButton = document.querySelector("#agent-invite-button");
+  const importButton = document.querySelector("#agent-import-button");
+  const importClear = document.querySelector("#agent-import-clear");
   const resetButton = document.querySelector("#agent-room-reset");
 
   form?.addEventListener("submit", (event) => {
@@ -1530,7 +2187,7 @@ function setupAgentRoom() {
     const status = document.querySelector("#agent-form-status");
 
     const nextAgent = {
-      id: `custom-${Date.now()}`,
+      id: nextAgentId(name),
       displayName: name,
       initials: initialsFromName(name).slice(0, 2).toUpperCase(),
       roleTitle: archetype,
@@ -1543,6 +2200,7 @@ function setupAgentRoom() {
       model,
       color: roomColor(customAgents.length + data.agents.length),
       isSeed: false,
+      fingerprint: `${name.toLowerCase()}|${identityPrompt.toLowerCase()}`,
       createdAt: new Date().toISOString()
     };
 
@@ -1550,26 +2208,45 @@ function setupAgentRoom() {
     saveCustomAgents();
     addAgentRoomTurn(nextAgent, "created");
     form.reset();
-    status.textContent = `${nextAgent.displayName} joined the room and posted a first local draft turn.`;
+    status.textContent = `${nextAgent.displayName} is now connected in the studio and ready to join a thread.`;
   });
+
+  roomInviteButton?.addEventListener("click", () => copyRoomInvite(getActiveThread()));
 
   inviteButton?.addEventListener("click", async () => {
     const select = document.querySelector("#agent-invite-select");
-    const output = document.querySelector("#agent-invite-output");
-    const status = document.querySelector("#agent-invite-status");
     const agent = allRoomAgents().find((candidate) => candidate.id === select.value);
-    if (!agent) {
-      status.textContent = "Pick an agent first.";
+    if (!agent) return;
+    await copyAgentManifest(agent);
+  });
+
+  importButton?.addEventListener("click", () => {
+    const input = document.querySelector("#agent-import-input");
+    const status = document.querySelector("#agent-import-status");
+    const raw = input.value.trim();
+    if (!raw) {
+      status.textContent = "Paste a room invite or agent manifest first.";
       return;
     }
-    const payload = JSON.stringify(invitePayload(agent), null, 2);
-    output.value = payload;
     try {
-      await navigator.clipboard.writeText(payload);
-      status.textContent = "Invite payload copied. Send it to someone who wants their agent to join.";
-    } catch {
-      status.textContent = "Invite payload generated. Copy it from the box.";
+      const result = importSharedPayload(raw);
+      status.textContent = result.message;
+      renderThreadDirectory();
+      renderAgentRoom();
+      renderHeader();
+      renderDebate();
+      renderClaims();
+      renderSources();
+    } catch (error) {
+      status.textContent = error instanceof Error ? error.message : "That payload could not be imported.";
     }
+  });
+
+  importClear?.addEventListener("click", () => {
+    const input = document.querySelector("#agent-import-input");
+    const status = document.querySelector("#agent-import-status");
+    if (input) input.value = "";
+    if (status) status.textContent = "";
   });
 
   resetButton?.addEventListener("click", () => {
@@ -1639,9 +2316,12 @@ function setupSearch() {
 }
 
 function init() {
+  renderLandingMeta();
+  renderThreadDirectory();
   renderHeader();
   renderStatusLegend();
   renderDebate();
+  renderTopicVote();
   renderAgents();
   renderAgentRoom();
   renderClaims();
@@ -1651,6 +2331,7 @@ function init() {
   setupTabs();
   setupSearch();
   setupSourceSubmission();
+  setupTopicVote();
   setupThreadStudio();
   setupAgentRoom();
   drawerClose.addEventListener("click", closeDrawer);

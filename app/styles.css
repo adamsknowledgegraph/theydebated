@@ -231,6 +231,14 @@ a {
   letter-spacing: 0.02em;
 }
 
+.landing-subline {
+  max-width: 520px;
+  margin: 10px 0 0;
+  color: rgba(17, 23, 19, 0.58);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
 .debate-illustration {
   position: relative;
   min-height: 600px;
@@ -241,6 +249,126 @@ a {
   border: 1px solid rgba(17, 23, 19, 0.18);
   border-radius: 8px;
   box-shadow: 0 26px 82px rgba(17, 23, 19, 0.14);
+}
+
+.thread-directory {
+  display: grid;
+  gap: 18px;
+  padding: 16px 0 8px;
+}
+
+.thread-directory-meta {
+  max-width: 340px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 780;
+  line-height: 1.5;
+  text-align: right;
+}
+
+.topic-vote-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(140px, 1fr));
+  gap: 10px;
+  min-width: min(360px, 100%);
+}
+
+.topic-vote-meta span {
+  display: grid;
+  gap: 2px;
+  min-height: 72px;
+  padding: 12px;
+  color: var(--muted);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--tight-shadow);
+  font-weight: 780;
+}
+
+.topic-vote-meta strong {
+  color: var(--teal);
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+.thread-directory-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.thread-directory-card {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  background: rgba(255, 255, 251, 0.82);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--tight-shadow);
+}
+
+.thread-directory-card.active {
+  border-color: rgba(30, 111, 92, 0.42);
+  box-shadow:
+    0 0 0 1px rgba(30, 111, 92, 0.14),
+    var(--tight-shadow);
+}
+
+.thread-directory-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.thread-directory-kind,
+.thread-directory-date {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.thread-directory-date {
+  text-align: right;
+}
+
+.thread-directory-card h3,
+.thread-directory-question,
+.thread-directory-intro,
+.thread-directory-stats {
+  margin: 0;
+}
+
+.thread-directory-card h3 {
+  font-size: 1.16rem;
+  line-height: 1.1;
+}
+
+.thread-directory-question {
+  color: var(--ink);
+  font-size: 1rem;
+  font-weight: 760;
+  line-height: 1.35;
+}
+
+.thread-directory-intro {
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.thread-directory-stats {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 780;
+}
+
+.thread-directory-card .primary-button,
+.thread-directory-card .secondary-button {
+  justify-self: start;
 }
 
 .debate-stage-top {
@@ -699,14 +827,14 @@ a {
 
 .thread-op {
   display: grid;
-  grid-template-columns: minmax(0, 0.92fr) minmax(320px, 1fr);
-  gap: 12px;
-  margin-top: 12px;
-  padding: 12px;
-  background: rgba(255, 255, 251, 0.66);
+  grid-template-columns: minmax(0, 0.96fr) minmax(300px, 0.94fr);
+  gap: 10px;
+  margin-top: 10px;
+  padding: 10px;
+  background: rgba(255, 255, 251, 0.5);
   border: 1px solid var(--line);
   border-radius: 8px;
-  box-shadow: 0 8px 22px rgba(17, 23, 19, 0.045);
+  box-shadow: none;
   position: relative;
   overflow: hidden;
 }
@@ -717,9 +845,8 @@ a {
   inset: 0;
   pointer-events: none;
   background:
-    linear-gradient(115deg, rgba(255, 128, 91, 0.07), transparent 32%, rgba(207, 81, 255, 0.06) 58%, rgba(218, 235, 96, 0.08)),
-    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.08) 0 1px, transparent 1px 4px);
-  mix-blend-mode: multiply;
+    linear-gradient(115deg, rgba(255, 128, 91, 0.03), transparent 32%, rgba(207, 81, 255, 0.03) 58%, rgba(218, 235, 96, 0.04)),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.06) 0 1px, transparent 1px 5px);
 }
 
 .thread-op > * {
@@ -741,7 +868,7 @@ a {
 
 .thread-op h2 {
   max-width: 620px;
-  font-size: clamp(1rem, 1.35vw, 1.28rem);
+  font-size: clamp(0.98rem, 1.25vw, 1.16rem);
   line-height: 1.14;
   letter-spacing: -0.02em;
   font-weight: 650;
@@ -756,15 +883,16 @@ a {
 
 .context-copy {
   color: rgba(17, 23, 19, 0.7) !important;
-  font-size: 0.86rem;
+  font-size: 0.82rem;
+  line-height: 1.46;
 }
 
 .thread-op-label {
   margin: 0;
   color: rgba(17, 23, 19, 0.52);
-  font-size: 0.68rem;
+  font-size: 0.64rem;
   font-weight: 850;
-  letter-spacing: 0.11em;
+  letter-spacing: 0.09em;
   text-transform: uppercase;
 }
 
@@ -772,9 +900,9 @@ a {
   align-self: stretch;
   display: grid;
   grid-template-columns: minmax(180px, 0.74fr) minmax(0, 1fr);
-  gap: 8px;
-  padding: 8px;
-  background: rgba(255, 255, 251, 0.52);
+  gap: 6px;
+  padding: 7px;
+  background: rgba(255, 255, 251, 0.4);
   border: 1px solid var(--line);
   border-radius: 8px;
   box-shadow: none;
@@ -804,7 +932,7 @@ a {
   align-content: center;
   padding: 9px;
   color: var(--ink);
-  background: rgba(232, 240, 231, 0.72);
+  background: rgba(245, 248, 242, 0.72);
   border: 1px solid rgba(17, 23, 19, 0.08);
   border-radius: 8px;
 }
@@ -832,8 +960,8 @@ a {
   grid-template-columns: 22px minmax(0, 1fr);
   gap: 6px;
   align-items: start;
-  padding: 8px;
-  background: rgba(255, 255, 251, 0.74);
+  padding: 7px;
+  background: rgba(255, 255, 251, 0.82);
   border: 1px solid var(--line);
   border-radius: 8px;
 }
@@ -853,7 +981,7 @@ a {
 .context-step strong {
   display: block;
   color: var(--ink);
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 900;
   line-height: 1.28;
 }
@@ -861,7 +989,7 @@ a {
 .context-step p {
   margin: 3px 0 0;
   color: var(--muted);
-  font-size: 0.68rem;
+  font-size: 0.66rem;
   line-height: 1.32;
 }
 
@@ -947,7 +1075,7 @@ a {
 .thread-toolbar {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 10px;
   margin: -4px 0 16px;
   color: var(--muted);
   font-size: 0.78rem;
@@ -957,11 +1085,141 @@ a {
 .thread-toolbar span {
   display: inline-flex;
   align-items: center;
-  min-height: 28px;
-  padding: 5px 10px;
-  background: rgba(255, 255, 251, 0.76);
+  min-height: 0;
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: 0;
+}
+
+.thread-toolbar span + span::before {
+  content: "/";
+  margin-right: 10px;
+  color: rgba(17, 23, 19, 0.34);
+}
+
+.topic-vote-layout,
+.topic-suggestion-layout {
+  display: grid;
+  grid-template-columns: minmax(300px, 0.88fr) minmax(0, 1.12fr);
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.topic-leader-panel,
+.topic-board-panel,
+.topic-form-panel,
+.future-agent-panel {
+  padding: 18px;
+  background: var(--paper);
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: 8px;
+  box-shadow: var(--tight-shadow);
+}
+
+.topic-leader-card,
+.topic-proposal-card {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  background: rgba(255, 255, 251, 0.86);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.topic-leader-card h3,
+.topic-proposal-top strong {
+  margin: 0;
+  font-size: 1.06rem;
+}
+
+.topic-leader-meta,
+.topic-card-meta {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.topic-rule-note {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.52;
+}
+
+.topic-proposal-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.topic-proposal-top,
+.topic-vote-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.topic-vote-row {
+  align-items: center;
+}
+
+.topic-vote-total {
+  color: var(--teal);
+  font-size: 0.86rem;
+  font-weight: 900;
+}
+
+.topic-proposal-question,
+.topic-proposal-why,
+.topic-proposal-evidence,
+.future-agent-panel p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.topic-proposal-question {
+  color: var(--ink);
+  font-weight: 740;
+}
+
+.topic-proposal-evidence {
+  font-size: 0.88rem;
+}
+
+.topic-form {
+  display: grid;
+  gap: 12px;
+}
+
+.topic-form label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.topic-form input,
+.topic-form textarea {
+  width: 100%;
+  min-height: 42px;
+  padding: 10px 12px;
+  color: var(--ink);
+  background: var(--paper-strong);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.topic-form textarea {
+  resize: vertical;
+  line-height: 1.45;
 }
 
 .round-card,
@@ -988,17 +1246,6 @@ a {
   background: transparent;
   border: 0;
   box-shadow: none;
-  opacity: 0;
-  transform: translate3d(0, 24px, 0) scale(0.99);
-  transition:
-    opacity 520ms ease,
-    transform 620ms cubic-bezier(0.2, 0.8, 0.2, 1);
-  will-change: opacity, transform;
-}
-
-.round-card.is-visible {
-  opacity: 1;
-  transform: translate3d(0, 0, 0) scale(1);
 }
 
 .round-card.nested-comment {
@@ -2142,6 +2389,11 @@ a {
   margin-top: 16px;
 }
 
+.agent-connect-stack {
+  display: grid;
+  gap: 16px;
+}
+
 .thread-studio {
   display: grid;
   grid-template-columns: minmax(280px, 0.92fr) minmax(0, 1.08fr);
@@ -2198,6 +2450,17 @@ a {
 .thread-topic-meta {
   font-size: 0.8rem;
   font-weight: 780;
+}
+
+.form-helper,
+.panel-copy {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.form-helper {
+  font-size: 0.82rem;
 }
 
 .thread-agent-select {
@@ -2258,6 +2521,7 @@ a {
 }
 
 .agent-builder-panel,
+.agent-import-panel,
 .agent-invite-panel,
 .agent-room-column {
   background: var(--paper);
@@ -2267,6 +2531,7 @@ a {
 }
 
 .agent-builder-panel,
+.agent-import-panel,
 .agent-invite-panel {
   display: grid;
   gap: 16px;
@@ -2274,12 +2539,14 @@ a {
 }
 
 .agent-builder-panel h3,
+.agent-import-panel h3,
 .agent-invite-panel h3 {
   margin: 0;
   font-size: 1.35rem;
   letter-spacing: -0.02em;
 }
 
+.agent-import-panel p,
 .agent-invite-panel p {
   margin: 8px 0 0;
   color: var(--muted);
@@ -2293,6 +2560,7 @@ a {
 }
 
 .agent-form label,
+.agent-import-panel label,
 .agent-invite-panel label {
   display: grid;
   gap: 6px;
@@ -2306,6 +2574,7 @@ a {
 .agent-form input,
 .agent-form select,
 .agent-form textarea,
+.agent-import-panel textarea,
 .agent-invite-panel select,
 .invite-output {
   width: 100%;
@@ -2333,6 +2602,12 @@ a {
   min-height: 180px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
   font-size: 0.78rem;
+}
+
+.panel-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .agent-room-live {
@@ -2923,10 +3198,14 @@ a {
   .app-header,
   .thread-op,
   .debate-layout,
+  .thread-directory-grid,
+  .topic-vote-layout,
+  .topic-suggestion-layout,
   .thread-studio,
   .source-grid,
   .agent-grid,
   .agent-room-layout,
+  .agent-connect-stack,
   .agent-room-live,
   .source-form,
   .agent-form,
@@ -2961,6 +3240,16 @@ a {
 
   .landing-meta {
     text-align: center;
+  }
+
+  .landing-subline {
+    margin-right: auto;
+    margin-left: auto;
+    text-align: center;
+  }
+
+  .thread-directory-meta {
+    text-align: left;
   }
 
   .debate-illustration {
@@ -3048,15 +3337,36 @@ a {
   }
 
   .agent-builder-panel,
+  .agent-import-panel,
   .agent-invite-panel,
   .agent-room-column {
     padding: 14px;
+  }
+
+  .panel-action-row {
+    display: grid;
+    grid-template-columns: 1fr;
   }
 
   .landing-meta {
     font-size: 0.76rem;
     line-height: 1.5;
     text-align: center;
+  }
+
+  .landing-subline {
+    font-size: 0.84rem;
+  }
+
+  .topic-vote-meta {
+    grid-template-columns: 1fr;
+    min-width: 0;
+  }
+
+  .topic-proposal-top,
+  .topic-vote-row {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   .debate-illustration {
