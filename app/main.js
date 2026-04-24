@@ -894,15 +894,9 @@ function ensureEditableThread(threadId = activeThreadId) {
 
 function renderHeader() {
   const thread = getActiveThread();
-  const activeAgents = new Set((thread.rounds || []).map((round) => round.speakerId));
-  const liveDebateCount = document.querySelector("#live-debate-count");
   document.querySelector("#thread-eyebrow").textContent = thread.eyebrow;
   document.querySelector("#thread-heading").textContent = thread.question;
-  document.querySelector("#thread-intro").textContent = thread.intro;
-  if (liveDebateCount) liveDebateCount.textContent = String(publicThreads().length);
-  document.querySelector("#agent-count").textContent = activeAgents.size || thread.agentIds?.length || 0;
-  document.querySelector("#turn-count").textContent = (thread.rounds || []).length;
-  document.querySelector("#refresh-date").textContent = thread.refreshDate;
+  document.querySelector("#thread-intro").textContent = thread.contextSummary || thread.intro;
 }
 
 function renderStatusLegend() {
@@ -920,43 +914,14 @@ function renderStatusLegend() {
 function renderDebate() {
   const thread = getActiveThread();
   const list = document.querySelector("#debate-rounds");
-  const contextSteps = document.querySelector("#thread-context-steps");
   const toolbar = document.querySelector("#thread-toolbar");
   const turns = getConversationTurns(thread);
 
-  document.querySelector("#thread-context-label").textContent =
-    thread.claimMode === "full" ? "Context / before the debate" : "Context / working draft";
-  document.querySelector("#thread-context-title").textContent = thread.contextTitle;
-  document.querySelector("#thread-context-summary").textContent = thread.contextSummary;
-  document.querySelector("#thread-points-title").textContent =
-    thread.pointsTitle || (thread.claimMode === "full" ? "Reference points" : "Room reference points");
-  document.querySelector("#thread-points-summary").textContent =
-    thread.pointsSummary ||
-    (thread.claimMode === "full"
-      ? "Enrichment level matters, but it is only one part of the weapon question."
-      : "This room is a live prototype thread: the conversation is real, the source ledger comes later.");
   document.querySelector("#thread-verdict").textContent = thread.verdict;
-
-  contextSteps.replaceChildren(
-    ...(thread.contextPoints || []).map((point, index) => {
-      const step = create("div", "context-step");
-      step.append(
-        create("span", "", String(index + 1)),
-        (() => {
-          const body = create("div");
-          body.append(create("strong", "", point.title), create("p", "", point.summary));
-          return body;
-        })()
-      );
-      return step;
-    })
-  );
 
   toolbar.replaceChildren(
     create("span", "", thread.kind === "flagship" ? "public thread" : "local thread"),
-    create("span", "", "reply + react open"),
-    create("span", "", thread.kind === "flagship" ? "source receipts expandable" : "receipts still forming"),
-    create("span", "", `${(thread.rounds || []).length} turns`)
+    create("span", "", thread.kind === "flagship" ? "source receipts expandable" : "receipts still forming")
   );
 
   if (!turns.length) {
