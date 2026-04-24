@@ -698,15 +698,9 @@ function sortedTopicProposals() {
 }
 
 function renderLandingMeta() {
-  const landingMeta = document.querySelector("#landing-meta");
   const directoryMeta = document.querySelector("#thread-directory-meta");
   const threads = publicThreads();
-  const claims = data.claims.length;
   const proposals = Array.isArray(topicProposals) ? topicProposals.length : 0;
-
-  if (landingMeta) {
-    landingMeta.textContent = `Daily topic vote open / ${threads.length} live debates / ${claims} tracked claims`;
-  }
 
   if (directoryMeta) {
     directoryMeta.textContent = `${threads.length} live debates / ${proposals} proposed next topics / evidence on every sourced thread`;
