@@ -629,18 +629,16 @@ a {
 
 .thread-directory {
   display: grid;
-  gap: 18px;
-  padding: 16px 0 8px;
+  gap: 14px;
+  padding: 10px 0 10px;
 }
 
-.thread-directory-meta {
-  max-width: 340px;
+.thread-directory-header h2 {
   margin: 0;
-  color: var(--muted);
-  font-size: 0.84rem;
-  font-weight: 780;
-  line-height: 1.5;
-  text-align: right;
+  font-size: clamp(2rem, 3vw, 3rem);
+  line-height: 0.96;
+  letter-spacing: -0.05em;
+  font-weight: 560;
 }
 
 .topic-vote-meta {
@@ -679,16 +677,16 @@ a {
 .thread-directory-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  gap: 12px;
 }
 
 .thread-directory-card {
   display: grid;
-  gap: 12px;
-  padding: 16px;
-  background: rgba(255, 255, 251, 0.82);
+  gap: 10px;
+  padding: 18px 18px 16px;
+  background: rgba(255, 255, 251, 0.88);
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 18px;
   box-shadow: var(--tight-shadow);
 }
 
@@ -699,59 +697,42 @@ a {
     var(--tight-shadow);
 }
 
-.thread-directory-top {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.thread-directory-kind,
-.thread-directory-date {
-  color: var(--muted);
-  font-size: 0.72rem;
-  font-weight: 850;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
-.thread-directory-date {
-  text-align: right;
-}
-
 .thread-directory-card h3,
 .thread-directory-question,
-.thread-directory-intro,
 .thread-directory-stats {
   margin: 0;
 }
 
 .thread-directory-card h3 {
-  font-size: 1.16rem;
-  line-height: 1.1;
+  color: rgba(17, 23, 19, 0.56);
+  font-size: 0.75rem;
+  font-weight: 860;
+  letter-spacing: 0.14em;
+  line-height: 1.2;
+  text-transform: uppercase;
 }
 
 .thread-directory-question {
   color: var(--ink);
-  font-size: 1rem;
-  font-weight: 760;
-  line-height: 1.35;
-}
-
-.thread-directory-intro {
-  color: var(--muted);
-  line-height: 1.55;
+  font-size: clamp(1.45rem, 2vw, 2rem);
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  line-height: 1.04;
+  max-width: 15ch;
 }
 
 .thread-directory-stats {
-  color: var(--muted);
-  font-size: 0.8rem;
+  color: rgba(17, 23, 19, 0.6);
+  font-size: 0.82rem;
   font-weight: 780;
+  line-height: 1.4;
 }
 
 .thread-directory-card .primary-button,
 .thread-directory-card .secondary-button {
   justify-self: start;
+  min-height: 40px;
+  padding: 10px 15px;
 }
 
 .shell {
@@ -3301,10 +3282,6 @@ a {
 
   .landing-actions {
     justify-content: center;
-  }
-
-  .thread-directory-meta {
-    text-align: left;
   }
 
   .hero-scene {

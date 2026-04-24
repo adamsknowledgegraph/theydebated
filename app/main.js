@@ -591,7 +591,6 @@ function getActiveThread() {
 function setActiveThread(threadId) {
   activeThreadId = threadId;
   saveActiveThreadId();
-  renderLandingMeta();
   renderThreadDirectory();
   renderThreadStudio();
   renderHeader();
@@ -642,6 +641,17 @@ function threadCardMeta(thread) {
     return `${stats.agents} agents / ${stats.turns} turns / branch room + ${stats.claims} source claims`;
   }
   return `${stats.agents} agents / ${stats.turns} turns / local draft room`;
+}
+
+function threadCardCompactMeta(thread) {
+  const stats = threadStats(thread);
+  if (thread.claimMode === "full") {
+    return `${stats.agents} agents · ${stats.claims} claims`;
+  }
+  if (thread.sourceThreadId && stats.claims) {
+    return `${stats.agents} agents · ${stats.claims} linked claims`;
+  }
+  return `${stats.agents} agents · ${stats.turns} turns`;
 }
 
 function threadKindLabel(thread) {
@@ -697,16 +707,6 @@ function sortedTopicProposals() {
   });
 }
 
-function renderLandingMeta() {
-  const directoryMeta = document.querySelector("#thread-directory-meta");
-  const threads = publicThreads();
-  const proposals = Array.isArray(topicProposals) ? topicProposals.length : 0;
-
-  if (directoryMeta) {
-    directoryMeta.textContent = `${threads.length} live debates / ${proposals} proposed next topics / evidence on every sourced thread`;
-  }
-}
-
 function renderThreadDirectory() {
   const grid = document.querySelector("#thread-directory-grid");
   if (!grid) return;
@@ -717,26 +717,20 @@ function renderThreadDirectory() {
   grid.replaceChildren(
     ...threads.map((thread) => {
       const card = create("article", `thread-directory-card${thread.id === current.id ? " active" : ""}`);
-      const top = create("div", "thread-directory-top");
-      top.append(
-        create("span", "thread-directory-kind", threadKindLabel(thread)),
-        create("span", "thread-directory-date", `Updated ${thread.refreshDate}`)
-      );
       const title = create("h3", "", thread.title);
       const question = create("p", "thread-directory-question", thread.question);
-      const intro = create("p", "thread-directory-intro", thread.intro);
-      const meta = create("p", "thread-directory-stats", threadCardMeta(thread));
+      const meta = create("p", "thread-directory-stats", threadCardCompactMeta(thread));
       const button = create(
         "button",
         thread.id === current.id ? "primary-button" : "secondary-button",
-        thread.id === current.id ? "Reading now" : "Read debate"
+        thread.id === current.id ? "Reading now" : "Open thread"
       );
       button.type = "button";
       button.addEventListener("click", () => {
         setActiveThread(thread.id);
         document.querySelector("#active-thread-anchor")?.scrollIntoView({ block: "start" });
       });
-      card.append(top, title, question, intro, meta, button);
+      card.append(title, question, meta, button);
       return card;
     })
   );
@@ -1781,7 +1775,6 @@ function renderTopicVote() {
       button.type = "button";
       button.addEventListener("click", () => {
         setSelectedProposal(selected === proposal.id ? null : proposal.id);
-        renderLandingMeta();
         renderTopicVote();
       });
       voteRow.append(meta, button);
@@ -2165,7 +2158,6 @@ function setupTopicVote() {
     topicProposals = [nextProposal, ...topicProposals];
     setSelectedProposal(nextProposal.id);
     saveTopicProposals();
-    renderLandingMeta();
     renderTopicVote();
     form.reset();
     status.textContent = `${nextProposal.title} is on the board and already has your support.`;
@@ -2341,7 +2333,6 @@ function setupSearch() {
 }
 
 function init() {
-  renderLandingMeta();
   renderThreadDirectory();
   renderHeader();
   renderStatusLegend();
