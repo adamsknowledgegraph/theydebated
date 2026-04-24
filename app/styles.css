@@ -293,6 +293,13 @@ a {
   line-height: 1;
 }
 
+.topic-vote-footnote {
+  margin: 8px 0 0;
+  color: rgba(17, 23, 19, 0.58);
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
 .thread-directory-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1138,6 +1145,13 @@ a {
   margin: 0;
   color: var(--muted);
   font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.topic-leader-schedule {
+  margin: -2px 0 0;
+  color: rgba(17, 23, 19, 0.64);
+  font-size: 0.84rem;
   line-height: 1.5;
 }
 

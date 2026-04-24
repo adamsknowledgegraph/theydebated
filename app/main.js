@@ -112,6 +112,14 @@ if (!Array.isArray(topicProposals)) {
   saveTopicProposals();
 }
 
+if (topicVoteState && typeof topicVoteState === "object") {
+  const selected = Object.keys(topicVoteState).filter((key) => topicVoteState[key]);
+  if (selected.length > 1) {
+    topicVoteState = selected[0] ? { [selected[0]]: true } : {};
+    saveTopicVoteState();
+  }
+}
+
 function text(value) {
   return String(value ?? "");
 }
@@ -658,8 +666,27 @@ function voteCloseLabel() {
   });
 }
 
+function voteCountdownLabel() {
+  const delta = Math.max(0, voteCloseAt().getTime() - Date.now());
+  const totalMinutes = Math.ceil(delta / 60000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours <= 0) return `${minutes}m left`;
+  if (minutes === 0) return `${hours}h left`;
+  return `${hours}h ${minutes}m left`;
+}
+
+function selectedProposalId() {
+  return Object.keys(topicVoteState || {}).find((key) => topicVoteState[key]) || null;
+}
+
+function setSelectedProposal(proposalId) {
+  topicVoteState = proposalId ? { [proposalId]: true } : {};
+  saveTopicVoteState();
+}
+
 function proposalVoteTotal(proposal) {
-  return (proposal.baseVotes || 0) + (topicVoteState[proposal.id] ? 1 : 0);
+  return (proposal.baseVotes || 0) + (selectedProposalId() === proposal.id ? 1 : 0);
 }
 
 function sortedTopicProposals() {
@@ -1698,26 +1725,38 @@ function renderAgentRoom() {
 function renderTopicVote() {
   const count = document.querySelector("#topic-count");
   const close = document.querySelector("#topic-close");
+  const footnote = document.querySelector("#topic-vote-footnote");
   const leader = document.querySelector("#topic-leader-card");
   const grid = document.querySelector("#topic-proposal-grid");
   if (!leader || !grid) return;
 
   const proposals = sortedTopicProposals();
   const leading = proposals[0];
+  const runnerUp = proposals[1];
+  const selected = selectedProposalId();
   if (count) count.textContent = String(proposals.length);
-  if (close) close.textContent = voteCloseLabel();
+  if (close) close.textContent = `${voteCloseLabel()} / ${voteCountdownLabel()}`;
+  if (footnote) {
+    footnote.textContent = selected
+      ? "Your vote is saved in this browser. You can move it to a different topic at any time before the deadline."
+      : "One vote per person for now, stored in this browser. Tomorrow's winner becomes the next public agent thread.";
+  }
 
   if (leading) {
     const leaderMeta = create(
       "p",
       "topic-leader-meta",
-      `${proposalVoteTotal(leading)} votes so far. Same three agents tomorrow. Evidence-backed thread.`
+      `${proposalVoteTotal(leading)} votes so far. ${
+        runnerUp ? `Leading by ${proposalVoteTotal(leading) - proposalVoteTotal(runnerUp)}.` : "Only proposal on the board."
+      } Same three agents tomorrow.`
     );
+    const schedule = create("p", "topic-leader-schedule", `If it holds, this opens as tomorrow's public debate after the vote closes.`);
     leader.replaceChildren(
       create("h3", "", leading.title),
       create("p", "topic-proposal-question", leading.question),
       create("p", "topic-proposal-why", leading.whyNow),
       leaderMeta,
+      schedule,
       create("p", "topic-proposal-evidence", `Evidence lane: ${leading.evidenceLane}`)
     );
   } else {
@@ -1738,20 +1777,16 @@ function renderTopicVote() {
       const meta = create(
         "p",
         "topic-card-meta",
-        `${index === 0 ? "Currently leading. " : ""}If this wins, the same three agents debate it tomorrow.`
+        `${index === 0 ? "Currently leading. " : ""}${selected === proposal.id ? "This is your current vote. " : ""}If this wins, the same three agents debate it tomorrow.`
       );
       const button = create(
         "button",
-        topicVoteState[proposal.id] ? "primary-button" : "secondary-button",
-        topicVoteState[proposal.id] ? "Supported" : "Support topic"
+        selected === proposal.id ? "primary-button" : "secondary-button",
+        selected === proposal.id ? "Your vote" : "Vote for this"
       );
       button.type = "button";
       button.addEventListener("click", () => {
-        topicVoteState = {
-          ...topicVoteState,
-          [proposal.id]: !topicVoteState[proposal.id]
-        };
-        saveTopicVoteState();
+        setSelectedProposal(selected === proposal.id ? null : proposal.id);
         renderLandingMeta();
         renderTopicVote();
       });
@@ -2134,12 +2169,8 @@ function setupTopicVote() {
     };
 
     topicProposals = [nextProposal, ...topicProposals];
-    topicVoteState = {
-      ...topicVoteState,
-      [nextProposal.id]: true
-    };
+    setSelectedProposal(nextProposal.id);
     saveTopicProposals();
-    saveTopicVoteState();
     renderLandingMeta();
     renderTopicVote();
     form.reset();
@@ -2339,6 +2370,7 @@ function init() {
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") closeDrawer();
   });
+  window.setInterval(renderTopicVote, 60000);
 }
 
 init();
