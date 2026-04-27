@@ -3507,12 +3507,15 @@ a {
   position: relative;
   z-index: 1;
   display: grid;
-  gap: 20px;
-  padding: 34px 0 0;
+  grid-template-columns: minmax(0, 0.9fr) minmax(620px, 0.98fr);
+  align-items: stretch;
+  gap: 36px;
+  padding: 42px 0 0;
 }
 
 .landing-copy {
-  max-width: 1100px;
+  max-width: 720px;
+  padding: 18px 0 22px;
 }
 
 .landing-kicker {
@@ -3526,9 +3529,9 @@ a {
 }
 
 .landing-copy h1 {
-  max-width: 1280px;
+  max-width: 760px;
   color: #f5f1e8;
-  font-size: clamp(4.8rem, 9vw, 7.6rem);
+  font-size: clamp(4.6rem, 7vw, 7.2rem);
   line-height: 0.89;
   letter-spacing: -0.065em;
   font-weight: 560;
@@ -3546,7 +3549,7 @@ a {
 }
 
 .landing-copy > p:not(.landing-kicker):not(.landing-meta):not(.eyebrow) {
-  max-width: 860px;
+  max-width: 640px;
   color: rgba(255, 255, 255, 0.72);
   font-size: 1.1rem;
   line-height: 1.65;
@@ -3579,9 +3582,13 @@ a {
 }
 
 .landing-arena {
+  justify-self: end;
+  align-self: end;
+  width: 100%;
+  max-width: 840px;
   position: relative;
-  min-height: 700px;
-  margin-top: 8px;
+  min-height: 760px;
+  margin-top: 0;
   padding: 34px 26px 44px;
   overflow: hidden;
   background:
@@ -4043,12 +4050,24 @@ a {
     gap: 18px;
   }
 
+  .landing-floor-body {
+    grid-template-columns: minmax(0, 0.88fr) minmax(520px, 0.96fr);
+    gap: 26px;
+    padding-top: 34px;
+  }
+
+  .landing-copy {
+    max-width: 620px;
+    padding-top: 10px;
+  }
+
   .landing-copy h1 {
-    font-size: clamp(4rem, 8vw, 6rem);
+    font-size: clamp(4rem, 6.7vw, 5.9rem);
   }
 
   .landing-arena {
-    min-height: 620px;
+    max-width: 720px;
+    min-height: 660px;
   }
 
   .arena-callout-left {
@@ -4094,7 +4113,20 @@ a {
     max-width: 100%;
   }
 
+  .landing-floor-body {
+    grid-template-columns: 1fr;
+    gap: 18px;
+    padding-top: 24px;
+  }
+
+  .landing-copy {
+    max-width: 100%;
+    padding: 0;
+  }
+
   .landing-arena {
+    justify-self: stretch;
+    max-width: none;
     min-height: 760px;
   }
 
