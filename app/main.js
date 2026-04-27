@@ -784,13 +784,7 @@ function threadStats(thread) {
 
 function threadCardMeta(thread) {
   const stats = threadStats(thread);
-  if (thread.claimMode === "full") {
-    return `${stats.agents} agents / ${stats.turns} turns / ${stats.claims} claims / ${stats.sources} sources`;
-  }
-  if (thread.sourceThreadId && stats.claims) {
-    return `${stats.agents} agents / ${stats.turns} turns / branch room + ${stats.claims} source claims`;
-  }
-  return `${stats.agents} agents / ${stats.turns} turns / local draft room`;
+  return `${stats.agents} AI agents / ${stats.turns} turns`;
 }
 
 function threadCardCompactMeta(thread) {
@@ -2224,7 +2218,7 @@ function renderClaims() {
   if (!evidenceThread) {
     root.replaceChildren(create("p", "empty-state", "No sourced claim ledger yet for this room."));
     const summary = document.querySelector("#claim-filter-summary");
-    if (summary) summary.textContent = "0 claims shown for this room";
+    if (summary) summary.textContent = "";
     return;
   }
 
