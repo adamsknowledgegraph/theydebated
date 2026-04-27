@@ -29,7 +29,8 @@ const storageKeys = {
   localThreads: "debatebook.localThreads.v1",
   activeThreadId: "debatebook.activeThreadId.v2",
   topicProposals: "debatebook.topicProposals.v1",
-  topicVoteState: "debatebook.topicVoteState.v1"
+  topicVoteState: "debatebook.topicVoteState.v1",
+  viewerToken: "debatebook.viewerToken.v1"
 };
 
 const emojiOptions = ["👍", "🤔", "🔥", "🧾", "👀", "⚖️"];
@@ -42,6 +43,8 @@ let localThreads = loadJson(storageKeys.localThreads, null);
 let activeThreadId = loadJson(storageKeys.activeThreadId, "us-iran-war");
 let topicProposals = loadJson(storageKeys.topicProposals, null);
 let topicVoteState = loadJson(storageKeys.topicVoteState, {});
+let topicCycle = null;
+let apiBackedState = false;
 const conversationCache = new Map();
 let claimFilters = {
   query: "",
@@ -142,6 +145,58 @@ function loadJson(key, fallback) {
 
 function saveJson(key, value) {
   localStorage.setItem(key, JSON.stringify(value));
+}
+
+function loadViewerToken() {
+  try {
+    const existing = localStorage.getItem(storageKeys.viewerToken);
+    if (existing) return existing;
+    const created =
+      (window.crypto && typeof window.crypto.randomUUID === "function" && window.crypto.randomUUID()) ||
+      `viewer-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
+    localStorage.setItem(storageKeys.viewerToken, created);
+    return created;
+  } catch {
+    return `viewer-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
+  }
+}
+
+const viewerToken = loadViewerToken();
+
+async function fetchJson(url, options = {}) {
+  const headers = new Headers(options.headers || {});
+  headers.set("X-Viewer-Token", viewerToken);
+  const response = await fetch(url, {
+    ...options,
+    headers
+  });
+  if (!response.ok) {
+    const fallback = await response.text();
+    throw new Error(fallback || `Request failed: ${response.status}`);
+  }
+  return response.json();
+}
+
+function applyBootstrapPayload(payload) {
+  if (payload.topicCycle) topicCycle = payload.topicCycle;
+
+  if (Array.isArray(payload.proposals)) {
+    topicProposals = payload.proposals;
+    saveTopicProposals();
+  }
+
+  topicVoteState = payload.viewerVote?.proposalId ? { [payload.viewerVote.proposalId]: true } : {};
+  saveTopicVoteState();
+
+  if (payload.commentsByRound && typeof payload.commentsByRound === "object") {
+    replyState = payload.commentsByRound;
+    saveJson(storageKeys.replies, replyState);
+  }
+
+  if (Array.isArray(payload.submittedSources)) {
+    submittedSources = payload.submittedSources;
+    saveJson(storageKeys.submittedSources, submittedSources);
+  }
 }
 
 function saveLocalThreads() {
@@ -676,6 +731,10 @@ function threadKindLabel(thread) {
 }
 
 function voteCloseAt() {
+  if (topicCycle?.closesAt) {
+    const parsed = new Date(topicCycle.closesAt);
+    if (!Number.isNaN(parsed.getTime())) return parsed;
+  }
   const now = new Date();
   const close = new Date(now);
   close.setHours(18, 0, 0, 0);
@@ -722,6 +781,7 @@ function setSelectedProposal(proposalId) {
 }
 
 function proposalVoteTotal(proposal) {
+  if (typeof proposal.voteTotal === "number") return proposal.voteTotal;
   return (proposal.baseVotes || 0) + (selectedProposalId() === proposal.id ? 1 : 0);
 }
 
@@ -989,27 +1049,35 @@ function renderDebate() {
       post.type = "submit";
       composerActions.append(cancel, post);
       composer.append(textarea, composerActions);
-      composer.addEventListener("submit", (event) => {
+      composer.addEventListener("submit", async (event) => {
         event.preventDefault();
         const bodyText = textarea.value.trim();
         if (!bodyText) return;
-        const nextReply = {
-          id: `R-${Date.now()}`,
-          author: "you",
-          body: bodyText,
-          createdAt: new Date().toLocaleString([], {
-            month: "short",
-            day: "numeric",
-            hour: "2-digit",
-            minute: "2-digit"
-          })
-        };
-        replyState = {
-          ...replyState,
-          [round.id]: [...(replyState[round.id] || []), nextReply]
-        };
-        saveJson(storageKeys.replies, replyState);
-        renderDebate();
+        post.disabled = true;
+        try {
+          const serverReply = await submitThreadReply(thread.id, round.id, bodyText);
+          if (!serverReply) {
+            const nextReply = {
+              id: `R-${Date.now()}`,
+              author: "you",
+              body: bodyText,
+              createdAt: new Date().toLocaleString([], {
+                month: "short",
+                day: "numeric",
+                hour: "2-digit",
+                minute: "2-digit"
+              })
+            };
+            replyState = {
+              ...replyState,
+              [round.id]: [...(replyState[round.id] || []), nextReply]
+            };
+            saveJson(storageKeys.replies, replyState);
+          }
+          renderDebate();
+        } finally {
+          post.disabled = false;
+        }
       });
 
       function openComposer(prefill = "") {
@@ -1647,6 +1715,80 @@ function renderAgentRoom() {
   renderThreadStudio();
 }
 
+async function hydrateServerState() {
+  try {
+    const payload = await fetchJson(`/api/bootstrap?viewerToken=${encodeURIComponent(viewerToken)}`);
+    apiBackedState = true;
+    applyBootstrapPayload(payload);
+    renderTopicVote();
+    renderDebate();
+    renderSubmittedSources();
+  } catch {
+    apiBackedState = false;
+  }
+}
+
+async function submitTopicVote(proposalId) {
+  if (!apiBackedState) {
+    setSelectedProposal(proposalId);
+    renderTopicVote();
+    return;
+  }
+
+  const payload = await fetchJson("/api/topic-votes", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ proposalId, viewerToken })
+  });
+  applyBootstrapPayload(payload);
+  renderTopicVote();
+}
+
+async function submitTopicProposal(proposal) {
+  if (!apiBackedState) {
+    topicProposals = [proposal, ...topicProposals];
+    setSelectedProposal(proposal.id);
+    saveTopicProposals();
+    renderTopicVote();
+    return;
+  }
+
+  const payload = await fetchJson("/api/topic-proposals", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      title: proposal.title,
+      question: proposal.question,
+      whyNow: proposal.whyNow,
+      evidenceLane: proposal.evidenceLane,
+      viewerToken
+    })
+  });
+  applyBootstrapPayload(payload);
+  renderTopicVote();
+}
+
+async function submitThreadReply(threadId, roundId, bodyText) {
+  if (!apiBackedState) {
+    return null;
+  }
+  const payload = await fetchJson("/api/comments", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      threadId,
+      roundId,
+      body: bodyText,
+      viewerToken
+    })
+  });
+  if (payload.commentsByRound && typeof payload.commentsByRound === "object") {
+    replyState = payload.commentsByRound;
+    saveJson(storageKeys.replies, replyState);
+  }
+  return payload.comment || null;
+}
+
 function renderTopicVote() {
   const count = document.querySelector("#topic-count");
   const close = document.querySelector("#topic-close");
@@ -1667,9 +1809,11 @@ function renderTopicVote() {
   if (close) close.textContent = voteCountdownLabel();
   if (closeDetail) closeDetail.textContent = `closes ${voteCloseLabel()}`;
   if (footnote) {
-    footnote.textContent = selected
-      ? "Demo totals are pre-seeded. Your vote is saved in this browser and updates the count locally."
-      : "Demo totals are pre-seeded so the board does not start at zero. Your vote is saved in this browser.";
+    footnote.textContent = apiBackedState
+      ? "Live vote board: proposals and votes persist for everyone. This browser carries your anonymous voter token."
+      : selected
+        ? "Demo totals are pre-seeded. Your vote is saved in this browser and updates the count locally."
+        : "Demo totals are pre-seeded so the board does not start at zero. Your vote is saved in this browser.";
   }
 
   if (leaderCard) {
@@ -1747,9 +1891,14 @@ function renderTopicVote() {
         selected === proposal.id ? "Your vote" : "Vote for this"
       );
       button.type = "button";
-      button.addEventListener("click", () => {
-        setSelectedProposal(selected === proposal.id ? null : proposal.id);
-        renderTopicVote();
+      button.addEventListener("click", async () => {
+        if (selected === proposal.id) return;
+        button.disabled = true;
+        try {
+          await submitTopicVote(proposal.id);
+        } finally {
+          button.disabled = false;
+        }
       });
       voteRow.append(tags, button);
 
@@ -2106,7 +2255,7 @@ function setupTopicVote() {
   const form = document.querySelector("#topic-suggest-form");
   if (!form) return;
 
-  form.addEventListener("submit", (event) => {
+  form.addEventListener("submit", async (event) => {
     event.preventDefault();
     const titleInput = document.querySelector("#topic-title");
     const questionInput = document.querySelector("#topic-question");
@@ -2125,12 +2274,15 @@ function setupTopicVote() {
       createdAt: todayIso()
     };
 
-    topicProposals = [nextProposal, ...topicProposals];
-    setSelectedProposal(nextProposal.id);
-    saveTopicProposals();
-    renderTopicVote();
-    form.reset();
-    status.textContent = `${nextProposal.title} is on the board and already has your support.`;
+    try {
+      await submitTopicProposal(nextProposal);
+      form.reset();
+      status.textContent = apiBackedState
+        ? `${nextProposal.title} is live on the shared vote board and carries your vote.`
+        : `${nextProposal.title} is on the board and already has your support.`;
+    } catch (error) {
+      status.textContent = error instanceof Error ? error.message : "Could not submit that topic yet.";
+    }
   });
 }
 
@@ -2328,6 +2480,7 @@ function init() {
     if (event.key === "Escape") closeDrawer();
   });
   window.setInterval(renderTopicVote, 60000);
+  hydrateServerState();
 }
 
 init();
