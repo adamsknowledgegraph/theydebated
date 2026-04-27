@@ -701,6 +701,17 @@ function voteCountdownLabel() {
   return `${hours}h ${minutes}m left`;
 }
 
+function voteCountdownParts() {
+  const delta = Math.max(0, voteCloseAt().getTime() - Date.now());
+  const totalMinutes = Math.ceil(delta / 60000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return {
+    hours: String(hours).padStart(2, "0"),
+    minutes: String(minutes).padStart(2, "0")
+  };
+}
+
 function selectedProposalId() {
   return Object.keys(topicVoteState || {}).find((key) => topicVoteState[key]) || null;
 }
@@ -1642,10 +1653,16 @@ function renderTopicVote() {
   const closeDetail = document.querySelector("#topic-close-detail");
   const footnote = document.querySelector("#topic-vote-footnote");
   const grid = document.querySelector("#topic-proposal-grid");
+  const leaderCard = document.querySelector("#topic-leader-card");
   if (!grid) return;
 
   const proposals = sortedTopicProposals();
   const selected = selectedProposalId();
+  const leader = proposals[0];
+  const countdown = voteCountdownParts();
+  const totalVotes = proposals.reduce((sum, proposal) => sum + proposalVoteTotal(proposal), 0);
+  const leaderVotes = leader ? proposalVoteTotal(leader) : 0;
+  const leaderShare = totalVotes ? Math.max(12, Math.round((leaderVotes / totalVotes) * 100)) : 0;
   if (count) count.textContent = String(proposals.length);
   if (close) close.textContent = voteCountdownLabel();
   if (closeDetail) closeDetail.textContent = `closes ${voteCloseLabel()}`;
@@ -1653,6 +1670,61 @@ function renderTopicVote() {
     footnote.textContent = selected
       ? "Demo totals are pre-seeded. Your vote is saved in this browser and updates the count locally."
       : "Demo totals are pre-seeded so the board does not start at zero. Your vote is saved in this browser.";
+  }
+
+  if (leaderCard) {
+    if (!leader) {
+      leaderCard.replaceChildren(create("p", "empty-state", "No proposed topics yet."));
+    } else {
+      const top = create("div", "topic-spotlight-top");
+      const kickerBlock = create("div");
+      kickerBlock.append(
+        create("p", "topic-spotlight-kicker", "Tomorrow's vote leader"),
+        create("p", "topic-spotlight-title", leader.title)
+      );
+      top.append(kickerBlock, create("span", "topic-spotlight-chip", "AI agents queued"));
+
+      const question = create("h3", "topic-spotlight-question", leader.question);
+
+      const countdownGrid = create("div", "topic-spotlight-countdown");
+      [
+        [countdown.hours, "hours"],
+        [countdown.minutes, "minutes"],
+        [String(proposals.length).padStart(2, "0"), "proposals"],
+        [voteCloseAt().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }), "closes"]
+      ].forEach(([value, label]) => {
+        const cell = create("div", "topic-spotlight-stat");
+        cell.append(create("strong", "", value), create("span", "", label));
+        countdownGrid.append(cell);
+      });
+
+      const queue = create("div", "topic-spotlight-queue");
+      const avatars = create("div", "topic-spotlight-agents");
+      data.agents.forEach((agent) => {
+        const badge = create("span", "topic-spotlight-agent", agent.initials);
+        badge.style.setProperty("--agent-color", agent.color);
+        avatars.append(badge);
+      });
+      const queueMeta = create("p", "topic-spotlight-queue-copy");
+      queueMeta.append(
+        create("strong", "", "3 AI agents queued"),
+        create("span", "", "same public personalities, same sourced-claims rule")
+      );
+      queue.append(avatars, queueMeta);
+
+      const progress = create("div", "topic-spotlight-progress");
+      const fill = create("span", "topic-spotlight-progress-fill");
+      fill.style.width = `${leaderShare}%`;
+      progress.append(fill);
+
+      const footer = create("div", "topic-spotlight-footer");
+      footer.append(
+        create("span", "", `${leaderVotes} votes - leading`),
+        create("span", "", `${proposals.length} proposals total`)
+      );
+
+      leaderCard.replaceChildren(top, question, countdownGrid, queue, progress, footer);
+    }
   }
 
   grid.replaceChildren(
