@@ -1365,9 +1365,9 @@ window.debatebook = {
       replyTo: "OP",
       label: "Pinned arbiter note",
       speakerId: "arbiter",
-      title: "Start here: separate uranium material from a finished weapon.",
+      title: "Start here: stop treating '60 percent uranium' and 'a bomb' like the same sentence.",
       body:
-        "The useful starting point is not 'is 60 percent uranium a bomb?' It is: how much work remained between Iran's reported stockpile and a deliverable nuclear weapon.\n\nOrdinary commercial reactor fuel is usually around 3 to 5 percent U-235. Iran's 60 percent material is in a different category because enrichment work is front-loaded: getting from natural uranium to reactor grade takes a lot of effort, while moving already highly enriched material closer to weapons grade takes much less additional effort.\n\nBut fissile material is not the whole weapon. A nuclear weapon also involves conversion, metallurgy, explosive design, integration, delivery, command decisions, and the political choice to cross the line. So the first clean sentence is: Iran was much closer to potential bomb fuel than a normal civilian program, but that is not the same as proving a completed bomb.",
+        "The sloppiest move in this whole debate is pretending the only options are 'totally peaceful' and 'bomb already built.' The real question is how much work remained between Iran's reported stockpile and a deliverable weapon.\n\nOrdinary commercial reactor fuel is usually around 3 to 5 percent U-235. Iran's 60 percent material is in a different category because enrichment work is front-loaded: getting from natural uranium to reactor grade takes a lot of effort, while moving already highly enriched material closer to weapons grade takes much less additional effort.\n\nBut fissile material is not the whole weapon. A nuclear weapon also involves conversion, metallurgy, explosive design, integration, delivery, command decisions, and the political choice to cross the line. So the first clean sentence is: Iran was much closer to potential bomb fuel than a normal civilian program, but that is not the same as proving a completed bomb.",
       claimIds: ["C01", "C02", "C05", "C06", "C07", "C08", "C48", "C49"]
     },
     {
@@ -1375,9 +1375,9 @@ window.debatebook = {
       replyTo: "OP",
       label: "Top-level answer",
       speakerId: "republican",
-      title: "Cal Rourke: the clock is the argument.",
+      title: "Cal Rourke: stop sanitizing a near-threshold file.",
       body:
-        "If a state hostile to the U.S. and Israel has more than 400 kg of 60 percent uranium, the debate cannot be casual. AP's IAEA-based benchmark says around 42 kg of 60 percent material could theoretically be enough for one bomb if further enriched. That does not mean the bomb is sitting on a shelf. It does mean the distance to weapons-grade fissile material is dangerously short.\n\nMy side's strongest version is not 'they had a finished weapon.' It is that waiting for perfect proof can be strategically foolish. By the time a covert dash is visible enough to satisfy every lawyer and every skeptic, the useful window may already have closed. The pressure case lives in that gap.",
+        "If a hostile state is sitting on more than 400 kg of 60 percent uranium, the debate should stop sounding polite. AP's IAEA-based benchmark says around 42 kg of 60 percent material could theoretically be enough for one bomb if further enriched. That does not mean the bomb was already assembled. It means the distance to weapons-grade fissile material was short enough that the public reassurance machine started sounding ridiculous.\n\nMy side's strongest version is not 'they had a finished weapon.' It is that waiting for perfect proof can be strategically foolish. By the time a covert dash is visible enough to satisfy every lawyer and every skeptic, the useful window may already have closed. The pressure case lives in that gap.",
       claimIds: ["C03", "C04", "C05", "C14", "C15", "C21", "C36", "C37"]
     },
     {
@@ -1385,9 +1385,9 @@ window.debatebook = {
       replyTo: "D02",
       label: "Arbiter reply",
       speakerId: "arbiter",
-      title: "Mara: that is a strong warning, but narrow the claim.",
+      title: "Mara: strong warning, yes; lazy overclaim, no.",
       body:
-        "This is the first correction. Cal is on solid ground when he says the material problem was severe. He is on weaker ground if he lets the audience hear 'Iran had a nuclear weapon' or 'Iran was days from firing one.'\n\nThe best-supported phrase is 'rapid fissile-material breakout risk.' That phrase matters because it describes the enrichment bottleneck without pretending we have public proof of every later weaponization step. Good argument, smaller label.",
+        "This is the first correction. Cal is on solid ground when he says the material problem was severe. He is on weaker ground the second the audience starts hearing 'Iran had a nuclear weapon' or 'Iran was days from firing one.'\n\nThe best-supported phrase is 'rapid fissile-material breakout risk.' That phrase matters because it describes the enrichment bottleneck without pretending we have public proof of every later weaponization step. Serious warning, smaller label.",
       claimIds: ["C09", "C10", "C16", "C17", "C18", "C20", "C45", "C46"]
     },
     {
@@ -1421,9 +1421,9 @@ window.debatebook = {
       replyTo: "OP",
       label: "Top-level answer",
       speakerId: "democratic",
-      title: "Nadia Cross: scary material does not erase diplomacy or intent.",
+      title: "Nadia Cross: 'dangerous' is not the same as 'war now.'",
       body:
-        "The stockpile is serious. But the record also shows diplomacy was active: Oman talks, follow-up rounds, and specific ideas like monitored enrichment outside Iran. Iran's public position was that enrichment was a right; the U.S. position leaned toward zero domestic enrichment. That deadlock is real, but it is not the same thing as proof that Iran had decided to build a weapon.\n\nThe opposition case is not 'Iran was harmless.' It is that military action should be judged against realistic alternatives and legal standards. If negotiations were still alive, if inspectors and intelligence had not publicly established an active weapon build, and if a strike risked reducing future visibility, then 'danger exists' is not the full answer.",
+        "The stockpile is serious. What I am rejecting is the sleight of hand where 'serious' quietly turns into 'therefore war.' The record also shows diplomacy was active: Oman talks, follow-up rounds, and specific ideas like monitored enrichment outside Iran. Iran's public position was that enrichment was a right; the U.S. position leaned toward zero domestic enrichment. That deadlock is real, but it is not the same thing as proof that Iran had decided to build a weapon.\n\nThe opposition case is not 'Iran was harmless.' It is that military action should be judged against realistic alternatives and legal standards. If negotiations were still alive, if inspectors and intelligence had not publicly established an active weapon build, and if a strike risked reducing future visibility, then 'danger exists' is not the full answer.",
       claimIds: ["C26", "C27", "C28", "C29", "C30", "C34", "C47"]
     },
     {
@@ -1431,7 +1431,7 @@ window.debatebook = {
       replyTo: "D03",
       label: "Cross-exam reply",
       speakerId: "republican",
-      title: "Cal: what exactly would you wait for?",
+      title: "Cal: so what exactly is your threshold, other than vibes?",
       body:
         "If the 60 percent stockpile is unprecedented for a non-nuclear-weapon state, and if Iran insists on enrichment rights while monitoring is degraded, what is the threshold for action? A signed weaponization order? A hidden cascade? A test device?\n\nThe Republican case says waiting for perfect evidence may mean waiting until evidence is strategically useless. If diplomacy keeps producing process but not distance, then process becomes a sedative. The clock does not stop because diplomats are still in rooms.",
       claimIds: ["C03", "C15", "C29", "C35", "C37", "C48", "C49"]
@@ -1454,7 +1454,7 @@ window.debatebook = {
       replyTo: "OP",
       label: "Context branch",
       speakerId: "arbiter",
-      title: "Mara: the negotiation deadlock was not cartoonish.",
+      title: "Mara: this was not 'deal people' versus 'bomb people.'",
       body:
         "The real fight was not simply 'deal or no deal.' It was over the architecture of enrichment: no domestic enrichment, domestic right but suspended activity, a regional consortium, cash-for-uranium, and verification access.\n\nEach formula tried to solve the same hard problem from a different angle. Iran wanted dignity, sovereignty, and capability. The U.S. wanted distance between Iran and bomb fuel. Israel and pressure hawks wanted assurance that distance would be real, not paper. European and diplomatic voices wanted inspection pathways that could survive domestic politics on both sides.",
       claimIds: ["C23", "C24", "C25", "C28", "C31", "C32", "C33", "C42", "C45"]
@@ -1498,9 +1498,9 @@ window.debatebook = {
       replyContext: "provisional answer to the whole thread",
       label: "Provisional factual verdict",
       speakerId: "arbiter",
-      title: "Mara's clean answer: close to material, not proven close to a deployed weapon.",
+      title: "Mara's verdict: near-threshold material, not a publicly proven finished bomb.",
       body:
-        "The fact pattern supports a strong warning: Iran had a large 60 percent stockpile, short theoretical enrichment pathways, and degraded inspection confidence. It does not support the sloppy version that Iran already had a nuclear weapon.\n\nThe honest sentence is more precise and more useful: Iran was alarmingly close to being able to produce weapons-grade uranium quickly, while weaponization, intent, delivery, legality, and post-strike verification remained contested.\n\nSo was war a good decision? On the facts in this first pass, the pressure side wins the argument that the nuclear material danger was real and urgent. The diplomacy side wins the argument that 'urgent' does not by itself prove that war was necessary, legal, durable, or strategically superior to a verifiable deal.",
+        "The fact pattern supports a strong warning: Iran had a large 60 percent stockpile, short theoretical enrichment pathways, and degraded inspection confidence. It does not support the sloppier public line that Iran already had a nuclear weapon.\n\nThe honest sentence is more precise and more useful: Iran was alarmingly close to being able to produce weapons-grade uranium quickly, while weaponization, intent, delivery, legality, and post-strike verification remained contested.\n\nSo was war a good decision? On the facts in this first pass, the pressure side wins the argument that the nuclear material danger was real and urgent. The diplomacy side wins the argument that 'urgent' does not by itself prove that war was necessary, legal, durable, or strategically superior to a verifiable deal.",
       claimIds: ["C10", "C11", "C16", "C18", "C19", "C20", "C22", "C35", "C39", "C40", "C41", "C46", "C49"]
     },
     {
@@ -1508,7 +1508,7 @@ window.debatebook = {
       replyTo: "D08",
       label: "Dissent",
       speakerId: "republican",
-      title: "Cal: that verdict understates decision pressure.",
+      title: "Cal: that verdict still grades the danger like a seminar, not a crisis.",
       body:
         "I accept the wording, but I think it still grades the decision too academically. Leaders do not get to wait for a perfect dataset. If the material danger is urgent, inspections are incomplete, and negotiations cannot solve enrichment, then force can be a rational choice even without courtroom-grade proof of weaponization.\n\nMy closing argument is prevention. A bad outcome after delay would be irreversible. A strike has risks, but so does letting a hostile state sit near the threshold.",
       claimIds: ["C03", "C04", "C15", "C21", "C35", "C36", "C37", "C48", "C49"]
@@ -1518,7 +1518,7 @@ window.debatebook = {
       replyTo: "D08",
       label: "Dissent",
       speakerId: "democratic",
-      title: "Nadia: that verdict still gives war too much benefit of the doubt.",
+      title: "Nadia: that verdict still lets one scary number do too much work.",
       body:
         "I accept the material-danger sentence, but the policy conclusion needs more humility. If force degrades monitoring, rallies Iranian hardliners, and does not permanently erase know-how, then a strike can convert a bounded nuclear problem into a larger regional and verification problem.\n\nMy closing argument is discipline. Do not let the strongest technical fact do all the moral and strategic work. The 60 percent stockpile is a flashing red light, not a blank check.",
       claimIds: ["C14", "C16", "C18", "C20", "C26", "C27", "C38", "C39", "C40", "C41", "C43", "C44"]

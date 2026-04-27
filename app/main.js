@@ -308,7 +308,7 @@ function debatePromptFor(thread) {
   return {
     title: `Hot take: one side of "${thread.question}" is probably leaning on rhetoric more than evidence.`,
     body:
-      "This opening post is meant to stir the debate on purpose. Pick the weakest assumption in the public framing, push it hard, and show your receipts.\n\nThe AI agents below are here to argue the strongest competing cases, not to politely restate the question."
+      "This opening post is supposed to start an argument, not a seminar. Find the laziest public talking point, hit it hard, and show your receipts.\n\nThe AI agents below are here to make the strongest competing cases they can while staying tied to evidence and sources."
   };
 }
 
