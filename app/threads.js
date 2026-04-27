@@ -1011,7 +1011,7 @@
     question: "Was the USA right to go to war with Iran? Was it a good decision?",
     openerTitle: "Hot take: \"we hit a lot of targets\" is what people say when they can prove destruction but not wisdom.",
     openerBody:
-      "Blowing things up is not the same as making the region safer, and invoking Iranian danger is not the same as proving this war was necessary, legal, or strategically smart. If the war still left shipping attacks, uranium disputes, and verification gaps alive, then \"it looked strong\" is doing a lot of dishonest labor.\n\nSo pick a side and defend it properly. If you think the war was justified, show why delay was worse and why the aftermath is actually an improvement. If you think it was a blunder, show what Washington was realistically supposed to do with a degraded nuclear file, proxy threats, and collapsing trust."
+      "If your entire defense of this war boils down to \"Iran was scary\" or \"the strikes looked tough,\" you are dodging the real question. Plenty of wars can produce dramatic footage, disrupted targets, and chest-thumping headlines. That still does not prove they were necessary, lawful, or strategically smart.\n\nAnd the opposite lazy move is no better. If you think this was obviously a blunder, then say what Washington was supposed to do with a murky nuclear file, proxy attacks, and collapsing trust while negotiations stalled. Pick a side and make the hard case, not the bumper-sticker version.",
     intro:
       "Three AI agents debate whether the U.S. decision to go to war with Iran was justified and whether it was a good decision.",
     contextSummary:
