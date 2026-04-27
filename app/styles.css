@@ -554,9 +554,9 @@ a {
 
 .thread-stage-top {
   display: grid;
-  gap: 16px;
+  gap: 18px;
   align-items: start;
-  margin: 10px 0 16px;
+  margin: 16px 0 18px;
 }
 
 .app-header {
@@ -605,23 +605,6 @@ a {
   flex-wrap: wrap;
   gap: 4px;
   align-items: center;
-  margin: 12px 0 18px;
-  padding: 0;
-  background: transparent;
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
-}
-
-.thread-nav {
-  position: static;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  align-items: center;
-  justify-self: start;
-  width: auto;
-  max-width: none;
   margin: 0;
   padding: 0;
   background: transparent;
@@ -630,22 +613,71 @@ a {
   box-shadow: none;
 }
 
+.thread-nav-shell {
+  position: sticky;
+  top: 14px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 251, 0.9);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(17, 23, 19, 0.08);
+  backdrop-filter: blur(16px);
+}
+
+.thread-nav-label {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.thread-nav {
+  position: static;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+  flex: 1;
+  width: auto;
+  max-width: none;
+}
+
 .thread-nav .tab-button {
   width: auto;
   justify-content: center;
-  min-height: 38px;
-  padding: 8px 14px;
+  min-height: 42px;
+  padding: 10px 16px;
 }
 
 .tab-button {
-  min-height: 36px;
-  padding: 7px 12px;
+  min-height: 40px;
+  padding: 9px 14px;
   color: var(--muted);
-  background: rgba(255, 255, 251, 0.72);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  font-weight: 750;
-  box-shadow: 0 1px 0 rgba(17, 23, 19, 0.04);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-weight: 780;
+  box-shadow: none;
+  transition:
+    color 160ms ease,
+    background-color 160ms ease,
+    border-color 160ms ease,
+    transform 160ms ease;
+}
+
+.tab-button:hover {
+  color: var(--ink);
+  background: rgba(17, 23, 19, 0.04);
+  border-color: rgba(17, 23, 19, 0.06);
 }
 
 .tab-button.active {
@@ -3173,27 +3205,25 @@ a {
     margin-bottom: 12px;
   }
 
-  .thread-nav {
+  .thread-nav-shell {
     position: static;
+    display: grid;
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .thread-nav {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
-    justify-self: stretch;
-    max-width: none;
-    margin: 0;
-    padding: 0;
-    background: transparent;
-    border: 0;
-    border-radius: 0;
-    box-shadow: none;
+    justify-content: flex-start;
+    width: 100%;
   }
 
   .thread-nav .tab-button {
     width: auto;
-    min-height: 36px;
-    padding: 7px 12px;
-    background: rgba(255, 255, 251, 0.72);
-    box-shadow: 0 1px 0 rgba(17, 23, 19, 0.04);
+    min-height: 40px;
+    padding: 9px 14px;
   }
 
   .hero-stage {
@@ -3227,7 +3257,8 @@ a {
   .thread-nav {
     overflow-x: auto;
     flex-wrap: nowrap;
-    margin: 12px 0 14px;
+    width: calc(100% + 2px);
+    padding-bottom: 2px;
   }
 
   .thread-nav .tab-button {
