@@ -4306,3 +4306,512 @@ a {
     gap: 8px;
   }
 }
+
+/* Landing arena v3 */
+
+.landing-arena {
+  justify-self: end;
+  align-self: end;
+  width: 100%;
+  max-width: 840px;
+  min-height: 720px;
+  padding: 26px 24px 28px;
+  overflow: hidden;
+  background: linear-gradient(180deg, #f4edde 0%, #efe5d2 100%);
+  border: 1px solid rgba(103, 88, 63, 0.16);
+  border-radius: 28px;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.28),
+    0 18px 44px rgba(8, 10, 12, 0.2);
+}
+
+.landing-arena::before {
+  background:
+    linear-gradient(rgba(84, 73, 60, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(84, 73, 60, 0.06) 1px, transparent 1px);
+  background-size: 48px 48px, 48px 48px;
+  opacity: 0.75;
+}
+
+.landing-arena::after {
+  display: none;
+}
+
+.arena-claim-card {
+  top: 28px;
+  left: 50%;
+  width: 250px;
+  gap: 7px;
+  padding: 14px 16px 13px;
+  color: #f5f1e8;
+  background: rgba(13, 14, 15, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  box-shadow:
+    0 18px 40px rgba(0, 0, 0, 0.22),
+    0 0 0 1px rgba(255, 255, 255, 0.02) inset;
+  transform: translateX(-50%);
+}
+
+.arena-claim-card p {
+  color: #5dbb6d;
+  font-size: 0.76rem;
+  letter-spacing: 0.14em;
+}
+
+.arena-claim-card strong {
+  color: #f5f1e8;
+  font-size: 0.98rem;
+  line-height: 1.34;
+}
+
+.arena-claim-card span {
+  color: rgba(245, 241, 232, 0.52);
+  font-size: 0.72rem;
+}
+
+.arena-stage {
+  position: relative;
+  min-height: 100%;
+  padding-top: 128px;
+}
+
+.arena-stage::after {
+  content: "";
+  position: absolute;
+  right: 34px;
+  bottom: 88px;
+  left: 34px;
+  border-top: 1px dashed rgba(78, 66, 51, 0.24);
+}
+
+.arena-curves {
+  position: absolute;
+  top: 112px;
+  right: 28px;
+  left: 28px;
+  height: 250px;
+  overflow: visible;
+}
+
+.arena-curve {
+  fill: none;
+  stroke-linecap: round;
+}
+
+.arena-curve--ghost {
+  stroke: rgba(123, 107, 89, 0.22);
+  stroke-width: 2.5;
+  stroke-dasharray: 4 10;
+}
+
+.arena-curve--blue {
+  stroke: rgba(47, 89, 223, 0.34);
+  stroke-width: 8;
+}
+
+.arena-curve--red {
+  stroke: rgba(210, 79, 58, 0.32);
+  stroke-width: 8;
+}
+
+.arena-dot {
+  opacity: 0.95;
+}
+
+.arena-dot--blue {
+  fill: #2f59df;
+}
+
+.arena-dot--neutral {
+  fill: #7f6b52;
+}
+
+.arena-dot--red {
+  fill: #d24f3a;
+}
+
+.arena-agent-row {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: end;
+  gap: 18px;
+  min-height: 520px;
+  padding: 120px 22px 18px;
+}
+
+.arena-agent-card {
+  --agent-color: #8a7a67;
+  --agent-label: #7b6a57;
+  --agent-badge-text: #8a7a67;
+  display: grid;
+  justify-items: center;
+  align-self: end;
+  gap: 12px;
+}
+
+.arena-agent-card p {
+  margin: 0;
+  color: var(--agent-label);
+  font-size: 0.78rem;
+  font-weight: 820;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.arena-agent-card-do {
+  --agent-color: #2f59df;
+  --agent-label: #2f59df;
+  --agent-badge-text: #2f59df;
+}
+
+.arena-agent-card-ij {
+  --agent-color: #8a7a67;
+  --agent-label: #675843;
+  --agent-badge-text: #675843;
+  transform: translateY(-16px);
+}
+
+.arena-agent-card-rc {
+  --agent-color: #d24f3a;
+  --agent-label: #d24f3a;
+  --agent-badge-text: #d24f3a;
+}
+
+.arena-agent-figure {
+  position: relative;
+  width: 184px;
+  height: 266px;
+}
+
+.arena-agent-head,
+.arena-agent-hair,
+.arena-agent-eyes,
+.arena-agent-mouth,
+.arena-agent-body,
+.arena-agent-tie,
+.arena-agent-badge {
+  position: absolute;
+  display: block;
+}
+
+.arena-agent-head {
+  left: 56px;
+  top: 24px;
+  width: 74px;
+  height: 74px;
+  background: #e6c2a2;
+  border-radius: 999px;
+  box-shadow: 0 10px 18px rgba(17, 23, 19, 0.08);
+}
+
+.arena-agent-hair {
+  left: 52px;
+  top: 18px;
+  width: 82px;
+  height: 34px;
+  background: #4a311d;
+  border-radius: 36px 36px 18px 18px;
+}
+
+.arena-agent-eyes {
+  left: 78px;
+  top: 56px;
+  width: 30px;
+  height: 8px;
+}
+
+.arena-agent-eyes::before,
+.arena-agent-eyes::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  width: 7px;
+  height: 7px;
+  background: #111713;
+  border-radius: 999px;
+}
+
+.arena-agent-eyes::before {
+  left: 0;
+}
+
+.arena-agent-eyes::after {
+  right: 0;
+}
+
+.arena-agent-mouth {
+  left: 82px;
+  top: 76px;
+  width: 20px;
+  height: 9px;
+  border-bottom: 3px solid #111713;
+  border-radius: 0 0 14px 14px;
+}
+
+.arena-agent-body {
+  left: 36px;
+  top: 92px;
+  width: 112px;
+  height: 138px;
+  background: var(--agent-color);
+  border-radius: 30px 30px 12px 12px;
+  box-shadow: 0 14px 28px rgba(17, 23, 19, 0.1);
+}
+
+.arena-agent-tie {
+  left: 86px;
+  top: 108px;
+  width: 14px;
+  height: 78px;
+  background: rgba(57, 24, 16, 0.62);
+  clip-path: polygon(35% 0, 65% 0, 100% 28%, 68% 100%, 32% 100%, 0 28%);
+}
+
+.arena-agent-badge {
+  left: 108px;
+  top: 126px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  color: var(--agent-badge-text);
+  background: #fffdf7;
+  border: 2px solid rgba(17, 23, 19, 0.1);
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+}
+
+.arena-agent-card-ij .arena-agent-body {
+  left: 42px;
+  width: 100px;
+  height: 132px;
+  border-radius: 24px 24px 12px 12px;
+}
+
+.arena-agent-card-ij .arena-agent-head {
+  left: 54px;
+}
+
+.arena-agent-card-ij .arena-agent-hair {
+  left: 50px;
+  width: 78px;
+  background: #352a21;
+}
+
+.arena-agent-card-ij .arena-agent-mouth {
+  width: 16px;
+  height: 7px;
+  border-bottom-left-radius: 10px;
+  border-bottom-right-radius: 4px;
+}
+
+.arena-agent-card-ij .arena-agent-tie {
+  display: none;
+}
+
+.arena-agent-card-ij .arena-agent-badge {
+  left: 76px;
+  top: 126px;
+}
+
+.arena-agent-card-rc .arena-agent-mouth {
+  width: 18px;
+  height: 2px;
+  border-bottom-width: 2px;
+  border-radius: 0;
+}
+
+.arena-agent-card-do .arena-agent-mouth {
+  border-bottom-color: rgba(17, 23, 19, 0.88);
+}
+
+@media (max-width: 1100px) {
+  .landing-arena {
+    max-width: 720px;
+    min-height: 650px;
+  }
+
+  .arena-curves {
+    top: 104px;
+    right: 18px;
+    left: 18px;
+    height: 220px;
+  }
+
+  .arena-agent-row {
+    min-height: 470px;
+    padding: 112px 8px 10px;
+    gap: 8px;
+  }
+
+  .arena-agent-figure {
+    width: 160px;
+    height: 238px;
+  }
+
+  .arena-agent-head {
+    left: 49px;
+    width: 68px;
+    height: 68px;
+  }
+
+  .arena-agent-hair {
+    left: 46px;
+    width: 74px;
+  }
+
+  .arena-agent-body {
+    left: 30px;
+    width: 102px;
+    height: 126px;
+  }
+
+  .arena-agent-tie {
+    left: 78px;
+    height: 68px;
+  }
+
+  .arena-agent-badge {
+    left: 96px;
+  }
+
+  .arena-agent-card-ij .arena-agent-body {
+    left: 34px;
+    width: 94px;
+  }
+
+  .arena-agent-card-ij .arena-agent-badge {
+    left: 70px;
+  }
+}
+
+@media (max-width: 960px) {
+  .landing-arena {
+    justify-self: stretch;
+    max-width: none;
+    min-height: 620px;
+  }
+
+  .arena-agent-row {
+    padding: 110px 18px 12px;
+  }
+}
+
+@media (max-width: 640px) {
+  .landing-arena {
+    min-height: 520px;
+    padding: 18px 14px 18px;
+    border-radius: 20px;
+  }
+
+  .arena-claim-card {
+    top: 18px;
+    width: min(250px, calc(100% - 28px));
+    padding: 12px 14px;
+  }
+
+  .arena-stage {
+    padding-top: 102px;
+  }
+
+  .arena-curves {
+    top: 82px;
+    right: 6px;
+    left: 6px;
+    height: 186px;
+  }
+
+  .arena-agent-row {
+    min-height: 360px;
+    padding: 92px 0 0;
+    gap: 2px;
+  }
+
+  .arena-agent-figure {
+    width: 108px;
+    height: 176px;
+  }
+
+  .arena-agent-head {
+    left: 31px;
+    top: 16px;
+    width: 46px;
+    height: 46px;
+  }
+
+  .arena-agent-hair {
+    left: 28px;
+    top: 12px;
+    width: 52px;
+    height: 24px;
+  }
+
+  .arena-agent-eyes {
+    left: 46px;
+    top: 34px;
+    width: 16px;
+    height: 6px;
+  }
+
+  .arena-agent-eyes::before,
+  .arena-agent-eyes::after {
+    width: 5px;
+    height: 5px;
+  }
+
+  .arena-agent-mouth {
+    left: 47px;
+    top: 48px;
+    width: 12px;
+    height: 6px;
+    border-bottom-width: 2px;
+  }
+
+  .arena-agent-body {
+    left: 18px;
+    top: 56px;
+    width: 72px;
+    height: 92px;
+    border-radius: 20px 20px 10px 10px;
+  }
+
+  .arena-agent-tie {
+    left: 49px;
+    top: 68px;
+    width: 10px;
+    height: 50px;
+  }
+
+  .arena-agent-badge {
+    left: 62px;
+    top: 82px;
+    width: 20px;
+    height: 20px;
+    font-size: 0.54rem;
+  }
+
+  .arena-agent-card-ij {
+    transform: translateY(-8px);
+  }
+
+  .arena-agent-card-ij .arena-agent-body {
+    left: 21px;
+    width: 66px;
+    height: 88px;
+  }
+
+  .arena-agent-card-ij .arena-agent-badge {
+    left: 45px;
+    top: 82px;
+  }
+
+  .arena-agent-card p {
+    font-size: 0.6rem;
+    letter-spacing: 0.11em;
+  }
+}
