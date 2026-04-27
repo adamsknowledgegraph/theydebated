@@ -194,6 +194,24 @@ CREATE TABLE IF NOT EXISTS comments (
 
 CREATE INDEX IF NOT EXISTS idx_comments_thread_round ON comments(thread_id, round_id, created_at);
 
+CREATE TABLE IF NOT EXISTS argument_submissions (
+    id TEXT PRIMARY KEY,
+    thread_id TEXT NOT NULL,
+    side TEXT NOT NULL,
+    author_name TEXT NOT NULL,
+    voter_token TEXT NOT NULL,
+    argument_text TEXT NOT NULL,
+    source_url TEXT NOT NULL,
+    source_title TEXT NOT NULL DEFAULT '',
+    source_note TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'approved',
+    moderation_reason TEXT NOT NULL DEFAULT ''
+);
+
+CREATE INDEX IF NOT EXISTS idx_argument_submissions_thread_side
+ON argument_submissions(thread_id, side, created_at);
+
 CREATE TABLE IF NOT EXISTS submitted_sources (
     id TEXT PRIMARY KEY,
     url TEXT NOT NULL,
@@ -429,6 +447,8 @@ def ensure_db(conn):
     ensure_column(conn, "topic_proposals", "moderation_reason", "TEXT NOT NULL DEFAULT ''")
     ensure_column(conn, "comments", "status", "TEXT NOT NULL DEFAULT 'approved'")
     ensure_column(conn, "comments", "moderation_reason", "TEXT NOT NULL DEFAULT ''")
+    ensure_column(conn, "argument_submissions", "status", "TEXT NOT NULL DEFAULT 'approved'")
+    ensure_column(conn, "argument_submissions", "moderation_reason", "TEXT NOT NULL DEFAULT ''")
     ensure_column(conn, "submitted_sources", "submitted_by", "TEXT NOT NULL DEFAULT ''")
     ensure_column(conn, "submitted_sources", "moderation_reason", "TEXT NOT NULL DEFAULT ''")
     import_legacy_source_queue(conn)
@@ -538,6 +558,32 @@ def comments_by_round(conn):
     return grouped
 
 
+def argument_submission_rows(conn, include_held=False):
+    statuses = ["approved"] if not include_held else ["approved", "held"]
+    placeholders = ", ".join("?" for _ in statuses)
+    return conn.execute(
+        f"SELECT * FROM argument_submissions WHERE status IN ({placeholders}) ORDER BY created_at DESC",
+        statuses,
+    ).fetchall()
+
+
+def serialize_argument_submission(row):
+    return {
+        "id": row["id"],
+        "threadId": row["thread_id"],
+        "side": row["side"],
+        "author": row["author_name"],
+        "argument": row["argument_text"],
+        "sourceUrl": row["source_url"],
+        "sourceTitle": row["source_title"],
+        "sourceNote": row["source_note"],
+        "createdAt": to_local_display(row["created_at"]),
+        "createdAtIso": row["created_at"],
+        "status": row["status"],
+        "moderationReason": row["moderation_reason"],
+    }
+
+
 def submitted_source_rows(conn, include_held=False):
     statuses = ["queued", "approved"] if not include_held else ["queued", "approved", "held"]
     placeholders = ", ".join("?" for _ in statuses)
@@ -600,6 +646,7 @@ def build_bootstrap_payload(conn, viewer_token):
         "viewerVote": viewer_vote_for_cycle(conn, cycle_id, viewer_token),
         "proposals": [serialize_proposal(row) for row in proposal_rows(conn, cycle_id)],
         "commentsByRound": comments_by_round(conn),
+        "argumentSubmissions": [serialize_argument_submission(row) for row in argument_submission_rows(conn)],
         "submittedSources": [serialize_source(row) for row in submitted_source_rows(conn)],
         "boardState": serialize_board_state(board_state_row(conn, cycle_id)),
     }
@@ -624,6 +671,12 @@ def held_queue(conn):
             serialize_comment(row)
             for row in conn.execute(
                 "SELECT * FROM comments WHERE status = 'held' ORDER BY created_at DESC"
+            ).fetchall()
+        ],
+        "arguments": [
+            serialize_argument_submission(row)
+            for row in conn.execute(
+                "SELECT * FROM argument_submissions WHERE status = 'held' ORDER BY created_at DESC"
             ).fetchall()
         ],
         "sources": [
@@ -836,6 +889,69 @@ def create_comment(conn, payload, viewer_token):
         "message": "Reply received and queued for moderation."
         if status == "held"
         else "Reply posted.",
+    }
+
+
+def create_argument_submission(conn, payload, viewer_token):
+    thread_id = str(payload.get("threadId", "")).strip()
+    side = str(payload.get("side", "")).strip().lower()
+    argument_text = str(payload.get("argument", "")).strip()
+    source_url = str(payload.get("sourceUrl", "")).strip()
+    source_title = str(payload.get("sourceTitle", "")).strip()
+    source_note = str(payload.get("sourceNote", "")).strip()
+    author = str(payload.get("author", "")).strip() or display_name_for_token(viewer_token)
+
+    if not thread_id:
+        raise ValueError("threadId is required.")
+    if side not in {"democratic", "republican", "arbiter"}:
+        raise ValueError("Choose a side for the argument.")
+    if len(argument_text) < 30:
+        raise ValueError("Argument needs a little more detail.")
+    if len(argument_text) > 2400:
+        raise ValueError("Argument is too long.")
+
+    parsed = urlparse(source_url)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        raise ValueError("Source URL must be a valid article link.")
+
+    assert_rate_limit(conn, viewer_token, "argument-submit", 5, 60 * 60 * 6)
+    status, moderation_reason = moderation_status_for(
+        "argument",
+        [author, side, argument_text, source_url, source_title, source_note],
+    )
+    submission_id = f"ARG-{uuid.uuid4().hex[:10]}"
+    now = iso_now_utc()
+    conn.execute(
+        """
+        INSERT INTO argument_submissions
+            (id, thread_id, side, author_name, voter_token, argument_text, source_url, source_title, source_note, created_at, status, moderation_reason)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            submission_id,
+            thread_id,
+            side,
+            author,
+            viewer_token or "anonymous",
+            argument_text,
+            source_url,
+            source_title,
+            source_note,
+            now,
+            status,
+            moderation_reason,
+        ),
+    )
+    if status == "held":
+        log_moderation_event(conn, "argument_submission", submission_id, "held", viewer_token or "anonymous", moderation_reason)
+    conn.commit()
+    row = conn.execute("SELECT * FROM argument_submissions WHERE id = ?", (submission_id,)).fetchone()
+    return serialize_argument_submission(row), {
+        "id": submission_id,
+        "status": status,
+        "message": "Argument received and queued for moderation."
+        if status == "held"
+        else "Argument added to the public debate board.",
     }
 
 
@@ -1246,6 +1362,13 @@ def review_entity(conn, entity_kind, entity_id, action, actor, note=""):
             (status, note if action == "reject" else "", entity_id),
         )
         log_moderation_event(conn, "comment", entity_id, action, actor, note)
+    elif entity_kind == "argument":
+        status = "approved" if action == "approve" else "rejected"
+        conn.execute(
+            "UPDATE argument_submissions SET status = ?, moderation_reason = ? WHERE id = ?",
+            (status, note if action == "reject" else "", entity_id),
+        )
+        log_moderation_event(conn, "argument_submission", entity_id, action, actor, note)
     elif entity_kind == "source":
         status = "queued" if action == "approve" else "rejected"
         conn.execute(
@@ -1478,6 +1601,12 @@ class DebatebookHandler(SimpleHTTPRequestHandler):
                 self.send_json({"commentsByRound": comments_by_round(conn)})
             return
 
+        if parsed.path == "/api/argument-submissions":
+            with db_connection() as conn:
+                ensure_db(conn)
+                self.send_json({"argumentSubmissions": [serialize_argument_submission(row) for row in argument_submission_rows(conn)]})
+            return
+
         super().do_GET()
 
     def do_POST(self):
@@ -1537,6 +1666,18 @@ class DebatebookHandler(SimpleHTTPRequestHandler):
                         {
                             "comment": comment if submission["status"] == "approved" else None,
                             "commentsByRound": comments_by_round(conn),
+                            "submission": submission,
+                        },
+                        201,
+                    )
+                    return
+
+                if parsed.path == "/api/argument-submissions":
+                    argument, submission = create_argument_submission(conn, payload, viewer_token)
+                    self.send_json(
+                        {
+                            "argument": argument if submission["status"] == "approved" else None,
+                            "argumentSubmissions": [serialize_argument_submission(row) for row in argument_submission_rows(conn)],
                             "submission": submission,
                         },
                         201,

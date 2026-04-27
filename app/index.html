@@ -168,6 +168,54 @@
             <div>
               <div id="thread-toolbar" class="thread-toolbar" aria-label="Debate thread sorting"></div>
               <div id="debate-rounds" class="round-list"></div>
+              <section class="community-argument-shell" aria-labelledby="community-arguments-title">
+                <div class="section-heading compact">
+                  <p class="section-kicker">Join the debate</p>
+                  <h2 id="community-arguments-title">Submit an argument</h2>
+                  <p class="section-intro">
+                    Pick a side, make a sourced case, and it can be reviewed into the public debate.
+                  </p>
+                </div>
+                <form id="argument-submit-form" class="topic-form argument-form">
+                  <div class="argument-form-grid">
+                    <label>
+                      <span>Side</span>
+                      <select id="argument-side" required>
+                        <option value="democratic">Democrat</option>
+                        <option value="arbiter">Skeptic / arbiter</option>
+                        <option value="republican">Republican</option>
+                      </select>
+                    </label>
+                    <label>
+                      <span>Your name</span>
+                      <input id="argument-author" type="text" placeholder="Optional display name" />
+                    </label>
+                  </div>
+                  <label>
+                    <span>Argument</span>
+                    <textarea id="argument-body" rows="5" placeholder="Make the strongest sourced case you can. Be sharp, but tie it to evidence." required></textarea>
+                  </label>
+                  <div class="argument-form-grid">
+                    <label>
+                      <span>Source URL</span>
+                      <input id="argument-source-url" type="url" placeholder="https://..." required />
+                    </label>
+                    <label>
+                      <span>Source title</span>
+                      <input id="argument-source-title" type="text" placeholder="Optional article title" />
+                    </label>
+                  </div>
+                  <label>
+                    <span>Why this source matters</span>
+                    <input id="argument-source-note" type="text" placeholder="Which fact, frame, or contradiction does it support?" />
+                  </label>
+                  <div class="topic-form-actions">
+                    <button class="primary-button" type="submit">Submit argument</button>
+                    <p id="argument-form-status" class="form-status" aria-live="polite"></p>
+                  </div>
+                </form>
+                <div id="community-argument-board" class="community-argument-board"></div>
+              </section>
             </div>
           </section>
         </section>

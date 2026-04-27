@@ -24,6 +24,7 @@ const drawerClose = document.querySelector("#drawer-close");
 const storageKeys = {
   reactions: "debatebook.reactions.v1",
   replies: "debatebook.replies.v1",
+  argumentSubmissions: "debatebook.argumentSubmissions.v1",
   submittedSources: "debatebook.submittedSources.v1",
   customAgents: "debatebook.customAgents.v2",
   agentRoomMessages: "debatebook.agentRoomMessages.v2",
@@ -38,6 +39,7 @@ const storageKeys = {
 const emojiOptions = ["👍", "🤔", "🔥", "🧾", "👀", "⚖️"];
 let reactionState = loadJson(storageKeys.reactions, {});
 let replyState = loadJson(storageKeys.replies, {});
+let argumentSubmissions = loadJson(storageKeys.argumentSubmissions, []);
 let submittedSources = loadJson(storageKeys.submittedSources, []);
 let customAgents = loadJson(storageKeys.customAgents, []);
 let agentRoomMessages = loadJson(storageKeys.agentRoomMessages, null);
@@ -242,6 +244,11 @@ function applyBootstrapPayload(payload) {
     saveJson(storageKeys.replies, replyState);
   }
 
+  if (Array.isArray(payload.argumentSubmissions)) {
+    argumentSubmissions = payload.argumentSubmissions;
+    saveJson(storageKeys.argumentSubmissions, argumentSubmissions);
+  }
+
   if (Array.isArray(payload.submittedSources)) {
     submittedSources = payload.submittedSources;
     saveJson(storageKeys.submittedSources, submittedSources);
@@ -264,7 +271,7 @@ async function hydrateAdminState() {
     adminState = {
       error: error instanceof Error ? error.message : "Could not load admin tools.",
       proposals: [],
-      moderationQueue: { proposals: [], comments: [], sources: [] }
+      moderationQueue: { proposals: [], comments: [], arguments: [], sources: [] }
     };
   }
   renderAdminPanel();
@@ -1287,7 +1294,90 @@ function renderDebate() {
       return card;
     })
   );
-  setupScrollReveal();
+  renderCommunityArguments();
+}
+
+function argumentSideLabel(side) {
+  return {
+    democratic: "Democrat",
+    arbiter: "Skeptic / arbiter",
+    republican: "Republican"
+  }[side] || titleCase(side || "community");
+}
+
+function argumentSideBadge(side) {
+  return {
+    democratic: "D",
+    arbiter: "S",
+    republican: "R"
+  }[side] || "?";
+}
+
+function argumentSideColor(side) {
+  return {
+    democratic: "#2f57e3",
+    arbiter: "#8a7e6f",
+    republican: "#d4523c"
+  }[side] || "#1e6f5c";
+}
+
+function threadArguments(thread) {
+  return argumentSubmissions.filter((argument) => argument.threadId === thread.id);
+}
+
+function communityArgumentCard(argument) {
+  const card = create("article", "community-argument-card");
+  card.style.setProperty("--argument-color", argumentSideColor(argument.side));
+  const top = create("div", "community-argument-top");
+  const side = create("div", "community-argument-side");
+  side.append(
+    create("span", "community-argument-badge", argumentSideBadge(argument.side)),
+    create("strong", "", argumentSideLabel(argument.side))
+  );
+  top.append(side, create("span", "community-argument-meta", `${argument.author} - ${argument.createdAt}`));
+
+  const sourceLink = create("a", "community-argument-source", argument.sourceTitle || argument.sourceUrl);
+  sourceLink.href = argument.sourceUrl;
+  sourceLink.target = "_blank";
+  sourceLink.rel = "noreferrer";
+
+  card.append(top, create("p", "", argument.argument));
+  if (argument.sourceNote) card.append(create("p", "community-argument-note", argument.sourceNote));
+  card.append(sourceLink);
+  return card;
+}
+
+function renderCommunityArguments() {
+  const root = document.querySelector("#community-argument-board");
+  if (!root) return;
+  const thread = getActiveThread();
+  const items = threadArguments(thread);
+  const groups = [
+    ["arbiter", "Skeptic / arbiter"],
+    ["democratic", "Democrat"],
+    ["republican", "Republican"]
+  ];
+
+  if (!items.length) {
+    root.replaceChildren(
+      create("p", "empty-state", "No reviewed community arguments yet. Submit a sourced case and it can be added to this debate.")
+    );
+    return;
+  }
+
+  root.replaceChildren(
+    ...groups.map(([side, title]) => {
+      const section = create("section", "community-argument-column");
+      const matching = items.filter((argument) => argument.side === side);
+      section.append(create("h3", "", title));
+      if (!matching.length) {
+        section.append(create("p", "empty-state", `No approved ${title.toLowerCase()} arguments yet.`));
+      } else {
+        matching.forEach((argument) => section.append(communityArgumentCard(argument)));
+      }
+      return section;
+    })
+  );
 }
 
 function compass(agent) {
@@ -1944,6 +2034,63 @@ async function submitThreadReply(threadId, roundId, bodyText) {
   };
 }
 
+async function submitArgumentContribution(argument) {
+  if (!apiBackedState) {
+    const localArgument = {
+      id: `ARG-${Date.now()}`,
+      threadId: argument.threadId,
+      side: argument.side,
+      author: argument.author || "you",
+      argument: argument.argument,
+      sourceUrl: argument.sourceUrl,
+      sourceTitle: argument.sourceTitle || "",
+      sourceNote: argument.sourceNote || "",
+      createdAt: new Date().toLocaleString([], {
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit"
+      }),
+      status: "approved"
+    };
+    argumentSubmissions = [localArgument, ...argumentSubmissions];
+    saveJson(storageKeys.argumentSubmissions, argumentSubmissions);
+    renderCommunityArguments();
+    return {
+      argument: localArgument,
+      submission: {
+        status: "local",
+        message: "Saved locally for now. Once the shared API is live here, reviewed arguments will persist for everyone."
+      }
+    };
+  }
+
+  const payload = await fetchJson("/api/argument-submissions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      threadId: argument.threadId,
+      side: argument.side,
+      author: argument.author,
+      argument: argument.argument,
+      sourceUrl: argument.sourceUrl,
+      sourceTitle: argument.sourceTitle,
+      sourceNote: argument.sourceNote,
+      viewerToken
+    })
+  });
+  if (Array.isArray(payload.argumentSubmissions)) {
+    argumentSubmissions = payload.argumentSubmissions;
+    saveJson(storageKeys.argumentSubmissions, argumentSubmissions);
+  }
+  if (adminEnabled()) await hydrateAdminState();
+  renderCommunityArguments();
+  return {
+    argument: payload.argument || null,
+    submission: payload.submission || null
+  };
+}
+
 function renderTopicVote() {
   const count = document.querySelector("#topic-count");
   const close = document.querySelector("#topic-close");
@@ -2415,6 +2562,44 @@ function setupSourceSubmission() {
   });
 }
 
+function setupArgumentSubmission() {
+  const form = document.querySelector("#argument-submit-form");
+  if (!form) return;
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const thread = getActiveThread();
+    const sideInput = document.querySelector("#argument-side");
+    const authorInput = document.querySelector("#argument-author");
+    const bodyInput = document.querySelector("#argument-body");
+    const sourceUrlInput = document.querySelector("#argument-source-url");
+    const sourceTitleInput = document.querySelector("#argument-source-title");
+    const sourceNoteInput = document.querySelector("#argument-source-note");
+    const status = document.querySelector("#argument-form-status");
+
+    const payload = {
+      threadId: thread.id,
+      side: sideInput.value,
+      author: authorInput.value.trim(),
+      argument: bodyInput.value.trim(),
+      sourceUrl: sourceUrlInput.value.trim(),
+      sourceTitle: sourceTitleInput.value.trim(),
+      sourceNote: sourceNoteInput.value.trim()
+    };
+
+    status.textContent = "";
+    try {
+      const result = await submitArgumentContribution(payload);
+      status.textContent = result.submission?.message || "Argument received.";
+      if (result.submission?.status !== "held") {
+        form.reset();
+      }
+    } catch (error) {
+      status.textContent = error instanceof Error ? error.message : "Could not submit argument right now.";
+    }
+  });
+}
+
 async function queueSubmittedSource(nextSource, status) {
   if (!apiBackedState) {
     submittedSources = [nextSource, ...submittedSources];
@@ -2604,7 +2789,17 @@ function adminQueueItem(kind, item) {
   const card = create("article", "admin-queue-card");
   const top = create("div", "admin-queue-top");
   top.append(
-    create("strong", "", kind === "proposal" ? item.title : kind === "comment" ? item.author : item.title || "Submitted source"),
+    create(
+      "strong",
+      "",
+      kind === "proposal"
+        ? item.title
+        : kind === "comment"
+          ? item.author
+          : kind === "argument"
+            ? `${argumentSideLabel(item.side)} / ${item.author}`
+            : item.title || "Submitted source"
+    ),
     create("span", "mini-chip", kind)
   );
   card.append(top);
@@ -2613,6 +2808,14 @@ function adminQueueItem(kind, item) {
     card.append(create("p", "admin-queue-question", item.question));
   } else if (kind === "comment") {
     card.append(create("p", "admin-queue-question", item.body));
+  } else if (kind === "argument") {
+    card.append(create("p", "admin-queue-question", item.argument));
+    const link = create("a", "admin-queue-link", item.sourceTitle || item.sourceUrl);
+    link.href = item.sourceUrl;
+    link.target = "_blank";
+    link.rel = "noreferrer";
+    card.append(link);
+    if (item.sourceNote) card.append(create("p", "admin-queue-question", item.sourceNote));
   } else {
     const link = create("a", "admin-queue-link", item.url);
     link.href = item.url;
@@ -2677,9 +2880,10 @@ function renderAdminPanel() {
   }
 
   const queueCards = [];
-  const moderationQueue = adminState?.moderationQueue || { proposals: [], comments: [], sources: [] };
+  const moderationQueue = adminState?.moderationQueue || { proposals: [], comments: [], arguments: [], sources: [] };
   moderationQueue.proposals.forEach((proposal) => queueCards.push(adminQueueItem("proposal", proposal)));
   moderationQueue.comments.forEach((comment) => queueCards.push(adminQueueItem("comment", comment)));
+  moderationQueue.arguments?.forEach((argument) => queueCards.push(adminQueueItem("argument", argument)));
   moderationQueue.sources.forEach((source) => queueCards.push(adminQueueItem("source", source)));
   if (!queueCards.length) {
     queue.replaceChildren(create("p", "empty-state", "No held items waiting for moderation."));
@@ -2852,6 +3056,7 @@ function init() {
   hydrateSubmittedSources();
   setupTabs();
   setupSearch();
+  setupArgumentSubmission();
   setupSourceSubmission();
   setupTopicVote();
   setupAdminControls();
