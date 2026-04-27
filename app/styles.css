@@ -4317,40 +4317,60 @@ a {
   min-height: 720px;
   padding: 26px 24px 28px;
   overflow: hidden;
-  background: linear-gradient(180deg, #f4edde 0%, #efe5d2 100%);
-  border: 1px solid rgba(103, 88, 63, 0.16);
+  background:
+    radial-gradient(circle at 18% 58%, rgba(33, 63, 172, 0.2), transparent 28%),
+    radial-gradient(circle at 82% 56%, rgba(198, 67, 46, 0.22), transparent 30%),
+    linear-gradient(180deg, #090909 0%, #111111 100%);
+  border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 28px;
   box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.28),
-    0 18px 44px rgba(8, 10, 12, 0.2);
+    inset 0 0 0 1px rgba(255, 255, 255, 0.03),
+    0 28px 60px rgba(0, 0, 0, 0.34);
 }
 
 .landing-arena::before {
   background:
-    linear-gradient(rgba(84, 73, 60, 0.06) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(84, 73, 60, 0.06) 1px, transparent 1px);
+    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
   background-size: 48px 48px, 48px 48px;
-  opacity: 0.75;
+  opacity: 0.95;
 }
 
 .landing-arena::after {
-  display: none;
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 20% 100%, rgba(29, 71, 204, 0.2), transparent 26%),
+    radial-gradient(circle at 82% 100%, rgba(210, 79, 58, 0.22), transparent 28%);
 }
 
 .arena-claim-card {
   top: 28px;
   left: 50%;
-  width: 250px;
+  position: absolute;
+  width: 276px;
   gap: 7px;
-  padding: 14px 16px 13px;
-  color: #f5f1e8;
-  background: rgba(13, 14, 15, 0.96);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 18px;
+  padding: 15px 16px 14px;
+  color: #161311;
+  background: #f4ede2;
+  border: 1px solid rgba(255, 255, 255, 0.26);
+  border-radius: 20px;
   box-shadow:
-    0 18px 40px rgba(0, 0, 0, 0.22),
-    0 0 0 1px rgba(255, 255, 255, 0.02) inset;
+    16px 16px 0 rgba(210, 79, 58, 0.95),
+    0 18px 40px rgba(0, 0, 0, 0.22);
   transform: translateX(-50%);
+  z-index: 4;
+}
+
+.arena-claim-card::before {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  border-radius: 26px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  opacity: 0.45;
 }
 
 .arena-claim-card p {
@@ -4360,20 +4380,20 @@ a {
 }
 
 .arena-claim-card strong {
-  color: #f5f1e8;
-  font-size: 0.98rem;
+  color: #161311;
+  font-size: 1rem;
   line-height: 1.34;
 }
 
 .arena-claim-card span {
-  color: rgba(245, 241, 232, 0.52);
+  color: rgba(22, 19, 17, 0.56);
   font-size: 0.72rem;
 }
 
 .arena-stage {
   position: relative;
   min-height: 100%;
-  padding-top: 128px;
+  padding-top: 118px;
 }
 
 .arena-stage::after {
@@ -4382,15 +4402,15 @@ a {
   right: 34px;
   bottom: 88px;
   left: 34px;
-  border-top: 1px dashed rgba(78, 66, 51, 0.24);
+  border-top: 1px dashed rgba(255, 255, 255, 0.16);
 }
 
 .arena-curves {
   position: absolute;
-  top: 112px;
+  top: 96px;
   right: 28px;
   left: 28px;
-  height: 250px;
+  height: 290px;
   overflow: visible;
 }
 
@@ -4400,19 +4420,21 @@ a {
 }
 
 .arena-curve--ghost {
-  stroke: rgba(123, 107, 89, 0.22);
-  stroke-width: 2.5;
-  stroke-dasharray: 4 10;
+  stroke: rgba(255, 255, 255, 0.16);
+  stroke-width: 1.8;
+  stroke-dasharray: 4 11;
 }
 
 .arena-curve--blue {
-  stroke: rgba(47, 89, 223, 0.34);
-  stroke-width: 8;
+  stroke: rgba(85, 121, 255, 0.78);
+  stroke-width: 7;
+  filter: drop-shadow(0 0 14px rgba(47, 89, 223, 0.18));
 }
 
 .arena-curve--red {
-  stroke: rgba(210, 79, 58, 0.32);
-  stroke-width: 8;
+  stroke: rgba(236, 145, 124, 0.84);
+  stroke-width: 7;
+  filter: drop-shadow(0 0 14px rgba(210, 79, 58, 0.18));
 }
 
 .arena-dot {
@@ -4439,12 +4461,12 @@ a {
   align-items: end;
   gap: 18px;
   min-height: 520px;
-  padding: 120px 22px 18px;
+  padding: 156px 22px 18px;
 }
 
 .arena-agent-card {
   --agent-color: #8a7a67;
-  --agent-label: #7b6a57;
+  --agent-label: #9b8a75;
   --agent-badge-text: #8a7a67;
   display: grid;
   justify-items: center;
@@ -4459,31 +4481,31 @@ a {
   font-weight: 820;
   letter-spacing: 0.15em;
   text-transform: uppercase;
+  text-shadow: 0 0 16px rgba(0, 0, 0, 0.45);
 }
 
 .arena-agent-card-do {
   --agent-color: #2f59df;
-  --agent-label: #2f59df;
+  --agent-label: #8faeff;
   --agent-badge-text: #2f59df;
 }
 
 .arena-agent-card-ij {
-  --agent-color: #8a7a67;
-  --agent-label: #675843;
+  --agent-color: #8a7f70;
+  --agent-label: #c0b19b;
   --agent-badge-text: #675843;
-  transform: translateY(-16px);
 }
 
 .arena-agent-card-rc {
   --agent-color: #d24f3a;
-  --agent-label: #d24f3a;
+  --agent-label: #f0a28f;
   --agent-badge-text: #d24f3a;
 }
 
 .arena-agent-figure {
   position: relative;
-  width: 184px;
-  height: 266px;
+  width: 188px;
+  height: 260px;
 }
 
 .arena-agent-head,
@@ -4504,7 +4526,7 @@ a {
   height: 74px;
   background: #e6c2a2;
   border-radius: 999px;
-  box-shadow: 0 10px 18px rgba(17, 23, 19, 0.08);
+  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.16);
 }
 
 .arena-agent-hair {
@@ -4557,8 +4579,8 @@ a {
   width: 112px;
   height: 138px;
   background: var(--agent-color);
-  border-radius: 30px 30px 12px 12px;
-  box-shadow: 0 14px 28px rgba(17, 23, 19, 0.1);
+  border-radius: 34px 34px 8px 8px;
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.16);
 }
 
 .arena-agent-tie {
@@ -4578,8 +4600,8 @@ a {
   width: 28px;
   height: 28px;
   color: var(--agent-badge-text);
-  background: #fffdf7;
-  border: 2px solid rgba(17, 23, 19, 0.1);
+  background: #fff7eb;
+  border: 2px solid rgba(17, 23, 19, 0.08);
   border-radius: 999px;
   font-size: 0.7rem;
   font-weight: 900;
@@ -4590,7 +4612,7 @@ a {
   left: 42px;
   width: 100px;
   height: 132px;
-  border-radius: 24px 24px 12px 12px;
+  border-radius: 24px 24px 8px 8px;
 }
 
 .arena-agent-card-ij .arena-agent-head {
@@ -4605,9 +4627,9 @@ a {
 
 .arena-agent-card-ij .arena-agent-mouth {
   width: 16px;
-  height: 7px;
-  border-bottom-left-radius: 10px;
-  border-bottom-right-radius: 4px;
+  height: 2px;
+  border-bottom-width: 2px;
+  border-radius: 0;
 }
 
 .arena-agent-card-ij .arena-agent-tie {
@@ -4637,15 +4659,15 @@ a {
   }
 
   .arena-curves {
-    top: 104px;
+    top: 90px;
     right: 18px;
     left: 18px;
-    height: 220px;
+    height: 252px;
   }
 
   .arena-agent-row {
     min-height: 470px;
-    padding: 112px 8px 10px;
+    padding: 148px 8px 10px;
     gap: 8px;
   }
 
@@ -4698,7 +4720,7 @@ a {
   }
 
   .arena-agent-row {
-    padding: 110px 18px 12px;
+    padding: 148px 18px 12px;
   }
 }
 
@@ -4711,24 +4733,27 @@ a {
 
   .arena-claim-card {
     top: 18px;
-    width: min(250px, calc(100% - 28px));
+    width: min(268px, calc(100% - 36px));
     padding: 12px 14px;
+    box-shadow:
+      10px 10px 0 rgba(210, 79, 58, 0.9),
+      0 18px 40px rgba(0, 0, 0, 0.22);
   }
 
   .arena-stage {
-    padding-top: 102px;
+    padding-top: 110px;
   }
 
   .arena-curves {
-    top: 82px;
+    top: 86px;
     right: 6px;
     left: 6px;
-    height: 186px;
+    height: 196px;
   }
 
   .arena-agent-row {
     min-height: 360px;
-    padding: 92px 0 0;
+    padding: 122px 0 0;
     gap: 2px;
   }
 
