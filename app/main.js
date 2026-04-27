@@ -796,12 +796,12 @@ function threadCardMeta(thread) {
 function threadCardCompactMeta(thread) {
   const stats = threadStats(thread);
   if (thread.claimMode === "full") {
-    return `${stats.agents} agents · ${stats.claims} claims`;
+    return `${stats.agents} AI agents`;
   }
   if (thread.sourceThreadId && stats.claims) {
-    return `${stats.agents} agents · ${stats.claims} linked claims`;
+    return `${stats.agents} AI agents`;
   }
-  return `${stats.agents} agents · ${stats.turns} turns`;
+  return `${stats.agents} AI agents`;
 }
 
 function threadKindLabel(thread) {
