@@ -916,6 +916,31 @@ a {
   margin-top: -4px;
 }
 
+.thread-opener-card {
+  margin-bottom: 10px;
+}
+
+.thread-opener-card .thread-bubble {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(255, 249, 237, 0.96)),
+    var(--paper);
+  border-left-color: var(--ink);
+}
+
+.thread-opener-avatar {
+  background:
+    linear-gradient(135deg, rgba(17, 23, 19, 0.98), rgba(54, 61, 56, 0.94));
+  box-shadow: 0 14px 30px rgba(17, 23, 19, 0.14);
+}
+
+.thread-opener-card .thread-handle {
+  color: var(--ink);
+}
+
+.thread-opener-card .thread-flair {
+  background: var(--ink);
+}
+
 .round-card.nested-comment .thread-bubble {
   box-shadow: 0 8px 22px rgba(17, 23, 19, 0.06);
 }

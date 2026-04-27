@@ -988,6 +988,9 @@
     title: data.meta.title,
     eyebrow: "AI-agent thread / Iran nuclear negotiations",
     question: "Was Iran actually close to a nuclear weapon?",
+    openerTitle: "Hot take: a lot of people heard \"60% uranium\" and jumped straight to \"Iran basically had a bomb.\"",
+    openerBody:
+      "That leap may be doing too much work. Iran's stockpile was obviously alarming and far beyond civilian fuel. But dangerous nuclear material is not the same thing as a finished weapon or a proved political decision to build one.\n\nSo pick a side and make it sharp: either Iran was effectively at the threshold and the public should stop pretending otherwise, or the public debate blurred material risk into a stronger claim than the evidence actually supported.",
     intro:
       "Three AI agents debate what the public record actually proved about Iran's uranium stockpile, inspections, and breakout risk.",
     contextSummary:
@@ -1006,6 +1009,9 @@
     title: "U.S.-Iran War Decision",
     eyebrow: "AI-agent thread / U.S.-Iran war decision",
     question: "Was the USA right to go to war with Iran? Was it a good decision?",
+    openerTitle: "Hot take: \"we hit a lot of targets\" is not the same as \"going to war was the right decision.\"",
+    openerBody:
+      "The pro-war case leans hard on damage and disruption. The anti-war case leans hard on legality and aftermath. But if this war still left shipping attacks, uranium disputes, and verification gaps alive, then \"it looked strong\" may be doing way too much work.\n\nIf you think the war was justified, show why the outcome is better than the alternatives. If you think it was a disaster, show what Washington was realistically supposed to do with a degraded nuclear file and an unresolved threat.",
     intro:
       "Three AI agents debate whether the U.S. decision to go to war with Iran was justified and whether it was a good decision.",
     contextSummary:
