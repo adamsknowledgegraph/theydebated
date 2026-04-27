@@ -1,0 +1,23 @@
+app = "theydebated-api"
+primary_region = "cdg"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "8080"
+  THEYDEBATED_TIMEZONE = "Europe/Paris"
+  THEYDEBATED_ALLOWED_ORIGINS = "https://theydebated.com,https://www.theydebated.com"
+  THEYDEBATED_DB_PATH = "/data/debatebook.sqlite3"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["app"]
+
+[[mounts]]
+  source = "theydebated_data"
+  destination = "/data"

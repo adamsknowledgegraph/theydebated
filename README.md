@@ -113,9 +113,68 @@ python3 refresh_topics.py
 
 The refresh script fetches current RSS headlines, rewrites three debateable topic candidates, and loads them into the active daily vote cycle. If feeds fail, it falls back to the built-in seeded topics.
 
-## Deployment Note
+## Production Shape
 
-The GitHub Pages site is still useful as a static prototype, but a real shared product now needs the Python backend deployed behind the same domain (or an API subdomain with CORS). GitHub Pages alone cannot persist votes or comments.
+The frontend can still live on GitHub Pages, but a real daily product needs the Python backend running behind an API hostname. The default production assumption in [app/runtime-config.js](/Users/adamhome/Projects/DEBATE%20BOTS/app/runtime-config.js) is:
+
+- site: `https://theydebated.com`
+- API: `https://api.theydebated.com`
+
+If you want to override that locally or in another environment, copy [app/runtime-config.example.js](/Users/adamhome/Projects/DEBATE%20BOTS/app/runtime-config.example.js) to `app/runtime-config.js` and change `apiBase`.
+
+### Deploy the backend on Render
+
+This repo now includes [render.yaml](/Users/adamhome/Projects/DEBATE%20BOTS/render.yaml), which deploys the Python backend from `app/`, adds a small persistent disk, and expects these environment variables:
+
+- `THEYDEBATED_ADMIN_TOKEN`
+- `THEYDEBATED_ALLOWED_ORIGINS`
+- `THEYDEBATED_DB_PATH`
+- `THEYDEBATED_TIMEZONE`
+
+Recommended values:
+
+- `THEYDEBATED_ALLOWED_ORIGINS=https://theydebated.com,https://www.theydebated.com`
+- `THEYDEBATED_DB_PATH=/var/data/debatebook.sqlite3`
+- `THEYDEBATED_TIMEZONE=Europe/Paris`
+
+### Deploy the backend on Fly.io
+
+This repo also includes [fly.toml](/Users/adamhome/Projects/DEBATE%20BOTS/fly.toml) and [Dockerfile](/Users/adamhome/Projects/DEBATE%20BOTS/Dockerfile). The same environment variables apply. The Fly app mounts a small `/data` volume for SQLite and serves the API on port `8080`.
+
+### Daily topic refresh
+
+The daily topic generator can be triggered in two ways:
+
+- locally with `python3 app/refresh_topics.py`
+- automatically with [refresh-topics.yml](/Users/adamhome/Projects/DEBATE%20BOTS/.github/workflows/refresh-topics.yml)
+
+The GitHub Action expects these repository secrets:
+
+- `THEYDEBATED_API_BASE`
+- `THEYDEBATED_ADMIN_TOKEN`
+
+It calls `POST /api/admin/refresh-topics` once per day and can also be run manually from the Actions tab.
+
+### What is shared now
+
+Once the Python backend is deployed, these stop being browser-local only:
+
+- topic proposals
+- topic votes
+- public comments on debate rounds
+- submitted source queue
+- admin moderation queue
+- featured proposal / promoted tomorrow-thread override
+
+### Moderation and anti-spam
+
+The backend now includes lightweight moderation and rate limiting for:
+
+- topic proposals
+- comments
+- submitted source links
+
+Suspicious submissions are held instead of published, then surfaced in the vote tab's admin panel for review.
 
 The app has three tabs:
 
@@ -131,6 +190,8 @@ Current interactive features:
 - Article links can be queued from the Claims & Sources tab with a daily or hourly processing cadence.
 - Submitted article links are saved in the local SQLite backend when using `server.py`, with browser `localStorage` as a fallback.
 - Topic proposals and votes can persist server-side, with browser-local fallback when the API is unavailable.
+- The daily vote board can be refreshed from live news feeds, clustered into three candidate topics, and overridden from the admin panel.
+- Held comments, proposals, and source submissions can be approved or rejected from the admin panel.
 - Debate messages animate into view on scroll and alternate between conversation lanes.
 - Debate turns stay as complete agent posts, with paragraph breaks preserved instead of sentence-sized fragments.
 - Debate now uses a Reddit-style nested comment tree, with top-level replies to the original question, replies to specific messages, and collapsed deep-dive branches.

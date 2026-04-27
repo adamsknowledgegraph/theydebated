@@ -224,6 +224,35 @@
                   <span>Sourced claims</span>
                 </div>
               </aside>
+
+              <details id="admin-panel" class="admin-panel" hidden>
+                <summary>Admin override</summary>
+                <div class="admin-panel-body">
+                  <label>
+                    <span>Admin token</span>
+                    <input id="admin-token" type="password" placeholder="Paste admin token" />
+                  </label>
+                  <div class="admin-actions">
+                    <button id="admin-save-token" class="secondary-button" type="button">Save token</button>
+                    <button id="admin-refresh-topics" class="secondary-button" type="button">Refresh daily slate</button>
+                  </div>
+                  <label>
+                    <span>Feature proposal</span>
+                    <select id="admin-feature-select"></select>
+                  </label>
+                  <label>
+                    <span>Admin note</span>
+                    <textarea id="admin-note" rows="2" placeholder="Optional note for feature or promotion"></textarea>
+                  </label>
+                  <div class="admin-actions">
+                    <button id="admin-feature-proposal" class="primary-button" type="button">Feature on board</button>
+                    <button id="admin-promote-thread" class="secondary-button" type="button">Promote tomorrow's thread</button>
+                    <button id="admin-clear-promoted" class="secondary-button" type="button">Clear promoted</button>
+                  </div>
+                  <p id="admin-status" class="form-status" aria-live="polite"></p>
+                  <div id="admin-queue" class="admin-queue"></div>
+                </div>
+              </details>
             </div>
           </div>
         </section>
@@ -340,6 +369,7 @@
     </aside>
     <div id="drawer-scrim" class="drawer-scrim"></div>
 
+    <script src="./runtime-config.js"></script>
     <script src="./data.js"></script>
     <script src="./threads.js"></script>
     <script src="./main.js"></script>

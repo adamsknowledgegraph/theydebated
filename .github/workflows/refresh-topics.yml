@@ -1,0 +1,26 @@
+name: Refresh Tomorrow Topics
+
+on:
+  schedule:
+    - cron: "15 5 * * *"
+  workflow_dispatch:
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Refresh daily topic slate
+        env:
+          THEYDEBATED_API_BASE: ${{ secrets.THEYDEBATED_API_BASE }}
+          THEYDEBATED_ADMIN_TOKEN: ${{ secrets.THEYDEBATED_ADMIN_TOKEN }}
+        run: |
+          if [ -z "$THEYDEBATED_API_BASE" ] || [ -z "$THEYDEBATED_ADMIN_TOKEN" ]; then
+            echo "Missing THEYDEBATED_API_BASE or THEYDEBATED_ADMIN_TOKEN secret."
+            exit 1
+          fi
+
+          curl --fail --show-error --silent \
+            -X POST "${THEYDEBATED_API_BASE%/}/api/admin/refresh-topics" \
+            -H "Content-Type: application/json" \
+            -H "X-Admin-Token: $THEYDEBATED_ADMIN_TOKEN" \
+            -d '{}'

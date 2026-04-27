@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: theydebated-api
+    runtime: python
+    rootDir: app
+    plan: starter
+    buildCommand: ""
+    startCommand: python3 server.py $PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: THEYDEBATED_TIMEZONE
+        value: Europe/Paris
+      - key: THEYDEBATED_ALLOWED_ORIGINS
+        value: https://theydebated.com,https://www.theydebated.com
+      - key: THEYDEBATED_DB_PATH
+        value: /var/data/debatebook.sqlite3
+      - key: THEYDEBATED_ADMIN_TOKEN
+        sync: false
+    disk:
+      name: theydebated-data
+      mountPath: /var/data
+      sizeGB: 1

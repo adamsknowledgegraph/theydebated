@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 import json
+import os
+import re
 import sqlite3
 import sys
 import uuid
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta, timezone
+from email.utils import parsedate_to_datetime
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.error import URLError
@@ -13,9 +16,15 @@ from urllib.request import Request, urlopen
 from zoneinfo import ZoneInfo
 
 APP_ROOT = Path(__file__).resolve().parent
-DB_PATH = APP_ROOT / "debatebook.sqlite3"
+DB_PATH = Path(os.environ.get("THEYDEBATED_DB_PATH", str(APP_ROOT / "debatebook.sqlite3"))).resolve()
 LEGACY_QUEUE_PATH = APP_ROOT / "submitted-sources.json"
-APP_TIMEZONE = ZoneInfo("Europe/Paris")
+APP_TIMEZONE = ZoneInfo(os.environ.get("THEYDEBATED_TIMEZONE", "Europe/Paris"))
+ADMIN_TOKEN = os.environ.get("THEYDEBATED_ADMIN_TOKEN", "").strip()
+ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.environ.get("THEYDEBATED_ALLOWED_ORIGINS", "").split(",")
+    if origin.strip()
+]
 
 SEED_TOPIC_PROPOSALS = [
     {
@@ -25,6 +34,7 @@ SEED_TOPIC_PROPOSALS = [
         "why_now": "Trade and industrial policy are back at the center of geopolitical argument, and both parties keep framing economics as national security.",
         "evidence_lane": "Tariff schedules, import-price effects, supply-chain shifts, and allied responses.",
         "base_votes": 34,
+        "origin": "seed",
     },
     {
         "slug": "gaza-ceasefire",
@@ -33,6 +43,7 @@ SEED_TOPIC_PROPOSALS = [
         "why_now": "Every new negotiation round creates sweeping public claims about leverage, humanitarian pauses, and whether diplomacy is actually moving the parties.",
         "evidence_lane": "Negotiation drafts, humanitarian access figures, mediator statements, and battlefield outcomes.",
         "base_votes": 29,
+        "origin": "seed",
     },
     {
         "slug": "europe-defense",
@@ -41,6 +52,7 @@ SEED_TOPIC_PROPOSALS = [
         "why_now": "European security debates keep colliding with fiscal constraints, burden-sharing demands, and pressure to show visible deterrence quickly.",
         "evidence_lane": "Budget commitments, procurement lead times, readiness data, and NATO planning assumptions.",
         "base_votes": 23,
+        "origin": "seed",
     },
     {
         "slug": "chip-controls",
@@ -49,6 +61,7 @@ SEED_TOPIC_PROPOSALS = [
         "why_now": "Compute is still treated as a choke point, but the public argument mixes technical constraints, geopolitics, and industrial policy in messy ways.",
         "evidence_lane": "Chip export rules, compute availability, cloud workarounds, and model-training bottlenecks.",
         "base_votes": 19,
+        "origin": "seed",
     },
 ]
 
@@ -56,7 +69,72 @@ NEWS_FEEDS = [
     ("Reuters World", "https://feeds.reuters.com/Reuters/worldNews"),
     ("Reuters Politics", "https://feeds.reuters.com/Reuters/PoliticsNews"),
     ("Reuters Business", "https://feeds.reuters.com/reuters/businessNews"),
+    ("BBC World", "https://feeds.bbci.co.uk/news/world/rss.xml"),
+    ("The Guardian World", "https://www.theguardian.com/world/rss"),
     ("Google News", "https://news.google.com/rss?hl=en-US&gl=US&ceid=US:en"),
+]
+
+ISSUE_BLUEPRINTS = [
+    {
+        "slug": "gaza-ceasefire",
+        "title": "Gaza cease-fire diplomacy",
+        "keywords": ["gaza", "ceasefire", "cease-fire", "rafah", "hostage"],
+        "question": "Will the latest Gaza cease-fire push change the war's trajectory, or is diplomacy still mostly buying headlines while battlefield logic stays in charge?",
+        "why_now": "Multiple live sources are forcing cease-fire diplomacy back into the center of the public argument.",
+        "evidence_lane": "Mediator drafts, humanitarian access, battlefield follow-through, and whether the parties honor what they announce.",
+        "priority": 10,
+    },
+    {
+        "slug": "iran-followthrough",
+        "title": "Iran cease-fire follow-through",
+        "keywords": ["iran", "hormuz", "uranium", "tehran", "iaea", "enrichment", "proxy"],
+        "question": "Is the current Iran cease-fire actually reducing risk, or just freezing the same nuclear and regional dangers under a calmer headline?",
+        "why_now": "The Iran file keeps returning because every claim of stabilization still runs into enrichment, shipping, and proxy questions.",
+        "evidence_lane": "Inspection access, shipping attacks, proxy activity, and the real state of bargaining over uranium and sanctions.",
+        "priority": 9,
+    },
+    {
+        "slug": "trade-tariffs",
+        "title": "U.S.-China tariff escalation",
+        "keywords": ["tariff", "trade", "china", "duties", "import"],
+        "question": "Do fresh tariff threats against China create real leverage, or mostly raise costs while both sides perform toughness for domestic audiences?",
+        "why_now": "Trade pressure keeps getting sold as strategy, which makes it a perfect public argument to pressure-test.",
+        "evidence_lane": "Tariff schedules, import-price effects, retaliation risk, and whether leverage changes negotiation behavior.",
+        "priority": 9,
+    },
+    {
+        "slug": "ai-chip-controls",
+        "title": "AI chip export controls",
+        "keywords": ["chip", "semiconductor", "ai", "compute", "export control", "nvidia"],
+        "question": "Are AI chip controls actually slowing frontier capability, or mostly rerouting supply chains while politicians pretend they changed the curve?",
+        "why_now": "Compute remains one of the few levers everyone treats as strategic, which means the claims around it deserve stress-testing.",
+        "evidence_lane": "Export rules, compute availability, cloud workarounds, and whether model development actually slows down.",
+        "priority": 8,
+    },
+    {
+        "slug": "europe-defense",
+        "title": "Europe defense spending",
+        "keywords": ["europe", "nato", "ukraine", "defense", "deterrence", "readiness"],
+        "question": "Should Europe ramp defense spending much faster right now, or would speed mostly create waste without near-term readiness gains?",
+        "why_now": "Burden-sharing and readiness claims keep colliding, and both sides are cherry-picking what counts as deterrence.",
+        "evidence_lane": "Budget commitments, procurement lead times, readiness data, and alliance planning assumptions.",
+        "priority": 8,
+    },
+    {
+        "slug": "inflation-and-rates",
+        "title": "Inflation and rate politics",
+        "keywords": ["inflation", "interest rate", "fed", "central bank", "prices"],
+        "question": "Are today's inflation and rate headlines evidence of real economic cooling, or mostly ammunition for political storytelling?",
+        "why_now": "Monetary headlines land as public verdicts fast, even when the underlying data is still messy and revisable.",
+        "evidence_lane": "Inflation prints, labor data, central-bank guidance, and market expectations after the headline hit.",
+        "priority": 7,
+    },
+]
+
+SPAM_PATTERNS = [
+    re.compile(r"\b(buy now|casino|betting|free money|loan offer|seo services|whatsapp|telegram|crypto signal|airdrop|onlyfans|porn)\b", re.I),
+    re.compile(r"(https?://\S+\s*){3,}", re.I),
+    re.compile(r"([!?])\1{5,}"),
 ]
 
 SCHEMA = """
@@ -82,6 +160,10 @@ CREATE TABLE IF NOT EXISTS topic_proposals (
     created_by TEXT,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
+    source_refs TEXT NOT NULL DEFAULT '[]',
+    origin TEXT NOT NULL DEFAULT 'community',
+    status TEXT NOT NULL DEFAULT 'approved',
+    moderation_reason TEXT NOT NULL DEFAULT '',
     FOREIGN KEY (cycle_id) REFERENCES vote_cycles(id) ON DELETE CASCADE
 );
 
@@ -105,7 +187,9 @@ CREATE TABLE IF NOT EXISTS comments (
     author_name TEXT NOT NULL,
     voter_token TEXT NOT NULL,
     body TEXT NOT NULL,
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'approved',
+    moderation_reason TEXT NOT NULL DEFAULT ''
 );
 
 CREATE INDEX IF NOT EXISTS idx_comments_thread_round ON comments(thread_id, round_id, created_at);
@@ -117,13 +201,51 @@ CREATE TABLE IF NOT EXISTS submitted_sources (
     note TEXT NOT NULL DEFAULT '',
     cadence TEXT NOT NULL DEFAULT 'daily',
     submitted_at TEXT NOT NULL,
-    status TEXT NOT NULL DEFAULT 'queued'
+    status TEXT NOT NULL DEFAULT 'queued',
+    submitted_by TEXT NOT NULL DEFAULT '',
+    moderation_reason TEXT NOT NULL DEFAULT ''
+);
+
+CREATE TABLE IF NOT EXISTS rate_limit_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    voter_token TEXT NOT NULL,
+    action TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_rate_limit_action_token_time
+ON rate_limit_events(action, voter_token, created_at);
+
+CREATE TABLE IF NOT EXISTS moderation_events (
+    id TEXT PRIMARY KEY,
+    entity_kind TEXT NOT NULL,
+    entity_id TEXT NOT NULL,
+    action TEXT NOT NULL,
+    actor TEXT NOT NULL DEFAULT '',
+    note TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS board_state (
+    cycle_id TEXT PRIMARY KEY,
+    featured_proposal_id TEXT,
+    promoted_proposal_id TEXT,
+    promoted_title TEXT NOT NULL DEFAULT '',
+    promoted_question TEXT NOT NULL DEFAULT '',
+    note TEXT NOT NULL DEFAULT '',
+    updated_at TEXT NOT NULL,
+    updated_by TEXT NOT NULL DEFAULT '',
+    FOREIGN KEY (cycle_id) REFERENCES vote_cycles(id) ON DELETE CASCADE
 );
 """
 
 
 def iso_now_utc():
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def today_iso_local():
+    return datetime.now(APP_TIMEZONE).date().isoformat()
 
 
 def to_local_display(iso_value):
@@ -139,6 +261,18 @@ def slugify(value):
     while "--" in lowered:
         lowered = lowered.replace("--", "-")
     return lowered.strip("-") or "topic"
+
+
+def json_list(value):
+    if not value:
+        return []
+    if isinstance(value, list):
+        return value
+    try:
+        parsed = json.loads(value)
+    except (TypeError, json.JSONDecodeError):
+        return []
+    return parsed if isinstance(parsed, list) else []
 
 
 def display_name_for_token(voter_token):
@@ -162,10 +296,20 @@ def read_json_body(handler):
 
 
 def db_connection():
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
+
+
+def ensure_column(conn, table_name, column_name, definition):
+    columns = {
+        row["name"]
+        for row in conn.execute(f"PRAGMA table_info({table_name})").fetchall()
+    }
+    if column_name not in columns:
+        conn.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {definition}")
 
 
 def import_legacy_source_queue(conn):
@@ -181,8 +325,9 @@ def import_legacy_source_queue(conn):
     for item in payload:
         conn.execute(
             """
-            INSERT OR IGNORE INTO submitted_sources (id, url, title, note, cadence, submitted_at, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT OR IGNORE INTO submitted_sources
+                (id, url, title, note, cadence, submitted_at, status, submitted_by, moderation_reason)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 item.get("id") or f"U-{uuid.uuid4().hex[:12]}",
@@ -192,6 +337,8 @@ def import_legacy_source_queue(conn):
                 item.get("cadence", "daily"),
                 item.get("submittedAt") or iso_now_utc(),
                 item.get("status", "queued"),
+                item.get("submittedBy", "legacy"),
+                item.get("moderationReason", ""),
             ),
         )
 
@@ -210,6 +357,35 @@ def cycle_window(now=None):
         "closes_at": close_at,
         "status": "open",
     }
+
+
+def seed_cycle_proposals(conn, cycle_id):
+    now = iso_now_utc()
+    for proposal in SEED_TOPIC_PROPOSALS:
+        conn.execute(
+            """
+            INSERT OR IGNORE INTO topic_proposals
+                (id, cycle_id, slug, title, question, why_now, evidence_lane, base_votes, created_by, created_at, updated_at, source_refs, origin, status, moderation_reason)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                f"{cycle_id}:{proposal['slug']}",
+                cycle_id,
+                proposal["slug"],
+                proposal["title"],
+                proposal["question"],
+                proposal["why_now"],
+                proposal["evidence_lane"],
+                proposal["base_votes"],
+                "seed",
+                now,
+                now,
+                json.dumps([], ensure_ascii=True),
+                proposal.get("origin", "seed"),
+                "approved",
+                "",
+            ),
+        )
 
 
 def ensure_cycle(conn):
@@ -245,45 +421,28 @@ def ensure_cycle(conn):
     return cycle["id"]
 
 
-def seed_cycle_proposals(conn, cycle_id):
-    now = iso_now_utc()
-    for proposal in SEED_TOPIC_PROPOSALS:
-        conn.execute(
-            """
-            INSERT OR IGNORE INTO topic_proposals
-                (id, cycle_id, slug, title, question, why_now, evidence_lane, base_votes, created_by, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                f"{cycle_id}:{proposal['slug']}",
-                cycle_id,
-                proposal["slug"],
-                proposal["title"],
-                proposal["question"],
-                proposal["why_now"],
-                proposal["evidence_lane"],
-                proposal["base_votes"],
-                "seed",
-                now,
-                now,
-            ),
-        )
-
-
 def ensure_db(conn):
     conn.executescript(SCHEMA)
+    ensure_column(conn, "topic_proposals", "source_refs", "TEXT NOT NULL DEFAULT '[]'")
+    ensure_column(conn, "topic_proposals", "origin", "TEXT NOT NULL DEFAULT 'community'")
+    ensure_column(conn, "topic_proposals", "status", "TEXT NOT NULL DEFAULT 'approved'")
+    ensure_column(conn, "topic_proposals", "moderation_reason", "TEXT NOT NULL DEFAULT ''")
+    ensure_column(conn, "comments", "status", "TEXT NOT NULL DEFAULT 'approved'")
+    ensure_column(conn, "comments", "moderation_reason", "TEXT NOT NULL DEFAULT ''")
+    ensure_column(conn, "submitted_sources", "submitted_by", "TEXT NOT NULL DEFAULT ''")
+    ensure_column(conn, "submitted_sources", "moderation_reason", "TEXT NOT NULL DEFAULT ''")
     import_legacy_source_queue(conn)
     ensure_cycle(conn)
+    conn.execute(
+        "DELETE FROM rate_limit_events WHERE created_at < ?",
+        ((datetime.now(timezone.utc) - timedelta(days=7)).replace(microsecond=0).isoformat().replace("+00:00", "Z"),),
+    )
     conn.commit()
 
 
 def active_cycle_row(conn):
     cycle_id = ensure_cycle(conn)
-    row = conn.execute(
-        "SELECT * FROM vote_cycles WHERE id = ?",
-        (cycle_id,),
-    ).fetchone()
-    return row
+    return conn.execute("SELECT * FROM vote_cycles WHERE id = ?", (cycle_id,)).fetchone()
 
 
 def serialize_cycle(row):
@@ -298,19 +457,23 @@ def serialize_cycle(row):
     }
 
 
-def proposal_rows(conn, cycle_id):
+def proposal_rows(conn, cycle_id, include_held=False):
+    if not cycle_id:
+        return []
+    statuses = ["approved"] if not include_held else ["approved", "held"]
+    placeholders = ", ".join("?" for _ in statuses)
     rows = conn.execute(
-        """
+        f"""
         SELECT
             p.*,
             p.base_votes + COUNT(v.id) AS vote_total
         FROM topic_proposals p
         LEFT JOIN topic_votes v ON v.proposal_id = p.id
-        WHERE p.cycle_id = ?
+        WHERE p.cycle_id = ? AND p.status IN ({placeholders})
         GROUP BY p.id
         ORDER BY vote_total DESC, p.created_at ASC
         """,
-        (cycle_id,),
+        (cycle_id, *statuses),
     ).fetchall()
     return rows
 
@@ -327,42 +490,29 @@ def serialize_proposal(row):
         "voteTotal": row["vote_total"],
         "createdAt": row["created_at"],
         "createdBy": row["created_by"],
+        "sourceRefs": json_list(row["source_refs"]),
+        "origin": row["origin"],
+        "status": row["status"],
+        "moderationReason": row["moderation_reason"],
     }
 
 
 def viewer_vote_for_cycle(conn, cycle_id, viewer_token):
-    if not viewer_token:
+    if not viewer_token or not cycle_id:
         return None
     row = conn.execute(
         "SELECT proposal_id FROM topic_votes WHERE cycle_id = ? AND voter_token = ?",
         (cycle_id, viewer_token),
     ).fetchone()
-    if not row:
-        return None
-    return {"proposalId": row["proposal_id"]}
+    return {"proposalId": row["proposal_id"]} if row else None
 
 
-def submitted_source_rows(conn):
+def comment_rows(conn, include_held=False):
+    statuses = ["approved"] if not include_held else ["approved", "held"]
+    placeholders = ", ".join("?" for _ in statuses)
     return conn.execute(
-        "SELECT * FROM submitted_sources ORDER BY submitted_at DESC"
-    ).fetchall()
-
-
-def serialize_source(row):
-    return {
-        "id": row["id"],
-        "url": row["url"],
-        "title": row["title"],
-        "note": row["note"],
-        "cadence": row["cadence"],
-        "submittedAt": row["submitted_at"],
-        "status": row["status"],
-    }
-
-
-def comment_rows(conn):
-    return conn.execute(
-        "SELECT * FROM comments ORDER BY created_at ASC"
+        f"SELECT * FROM comments WHERE status IN ({placeholders}) ORDER BY created_at ASC",
+        statuses,
     ).fetchall()
 
 
@@ -376,6 +526,8 @@ def serialize_comment(row):
         "body": row["body"],
         "createdAt": to_local_display(row["created_at"]),
         "createdAtIso": row["created_at"],
+        "status": row["status"],
+        "moderationReason": row["moderation_reason"],
     }
 
 
@@ -386,25 +538,180 @@ def comments_by_round(conn):
     return grouped
 
 
+def submitted_source_rows(conn, include_held=False):
+    statuses = ["queued", "approved"] if not include_held else ["queued", "approved", "held"]
+    placeholders = ", ".join("?" for _ in statuses)
+    return conn.execute(
+        f"SELECT * FROM submitted_sources WHERE status IN ({placeholders}) ORDER BY submitted_at DESC",
+        statuses,
+    ).fetchall()
+
+
+def serialize_source(row):
+    return {
+        "id": row["id"],
+        "url": row["url"],
+        "title": row["title"],
+        "note": row["note"],
+        "cadence": row["cadence"],
+        "submittedAt": row["submitted_at"],
+        "status": row["status"],
+        "submittedBy": row["submitted_by"],
+        "moderationReason": row["moderation_reason"],
+    }
+
+
+def board_state_row(conn, cycle_id):
+    if not cycle_id:
+        return None
+    return conn.execute("SELECT * FROM board_state WHERE cycle_id = ?", (cycle_id,)).fetchone()
+
+
+def serialize_board_state(row):
+    if not row:
+        return {
+            "featuredProposalId": None,
+            "promotedThread": None,
+            "note": "",
+            "updatedAt": None,
+        }
+    promoted = None
+    if row["promoted_proposal_id"] or row["promoted_title"] or row["promoted_question"]:
+        promoted = {
+            "proposalId": row["promoted_proposal_id"],
+            "title": row["promoted_title"],
+            "question": row["promoted_question"],
+            "note": row["note"],
+            "updatedAt": row["updated_at"],
+        }
+    return {
+        "featuredProposalId": row["featured_proposal_id"],
+        "promotedThread": promoted,
+        "note": row["note"],
+        "updatedAt": row["updated_at"],
+    }
+
+
 def build_bootstrap_payload(conn, viewer_token):
     cycle = active_cycle_row(conn)
     cycle_id = cycle["id"] if cycle else None
     return {
         "topicCycle": serialize_cycle(cycle),
-        "viewerVote": viewer_vote_for_cycle(conn, cycle_id, viewer_token) if cycle_id else None,
-        "proposals": [serialize_proposal(row) for row in proposal_rows(conn, cycle_id)] if cycle_id else [],
+        "viewerVote": viewer_vote_for_cycle(conn, cycle_id, viewer_token),
+        "proposals": [serialize_proposal(row) for row in proposal_rows(conn, cycle_id)],
         "commentsByRound": comments_by_round(conn),
         "submittedSources": [serialize_source(row) for row in submitted_source_rows(conn)],
+        "boardState": serialize_board_state(board_state_row(conn, cycle_id)),
     }
+
+
+def held_queue(conn):
+    return {
+        "proposals": [
+            serialize_proposal(row)
+            for row in conn.execute(
+                """
+                SELECT p.*, p.base_votes + COUNT(v.id) AS vote_total
+                FROM topic_proposals p
+                LEFT JOIN topic_votes v ON v.proposal_id = p.id
+                WHERE p.status = 'held'
+                GROUP BY p.id
+                ORDER BY p.created_at DESC
+                """
+            ).fetchall()
+        ],
+        "comments": [
+            serialize_comment(row)
+            for row in conn.execute(
+                "SELECT * FROM comments WHERE status = 'held' ORDER BY created_at DESC"
+            ).fetchall()
+        ],
+        "sources": [
+            serialize_source(row)
+            for row in conn.execute(
+                "SELECT * FROM submitted_sources WHERE status = 'held' ORDER BY submitted_at DESC"
+            ).fetchall()
+        ],
+    }
+
+
+def build_admin_bootstrap(conn):
+    cycle = active_cycle_row(conn)
+    cycle_id = cycle["id"] if cycle else None
+    return {
+        "topicCycle": serialize_cycle(cycle),
+        "boardState": serialize_board_state(board_state_row(conn, cycle_id)),
+        "proposals": [serialize_proposal(row) for row in proposal_rows(conn, cycle_id, include_held=True)],
+        "moderationQueue": held_queue(conn),
+    }
+
+
+def record_rate_limit_event(conn, voter_token, action):
+    conn.execute(
+        "INSERT INTO rate_limit_events (voter_token, action, created_at) VALUES (?, ?, ?)",
+        (voter_token or "anonymous", action, iso_now_utc()),
+    )
+
+
+def assert_rate_limit(conn, voter_token, action, limit_count, window_seconds):
+    now = datetime.now(timezone.utc)
+    window_start = (now - timedelta(seconds=window_seconds)).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    current_count = conn.execute(
+        """
+        SELECT COUNT(*) FROM rate_limit_events
+        WHERE voter_token = ? AND action = ? AND created_at >= ?
+        """,
+        (voter_token or "anonymous", action, window_start),
+    ).fetchone()[0]
+    if current_count >= limit_count:
+        raise PermissionError("You're going fast. Give it a minute, then try again.")
+    record_rate_limit_event(conn, voter_token, action)
+
+
+def url_count(text_value):
+    return len(re.findall(r"https?://\S+", text_value, re.I))
+
+
+def caps_ratio(text_value):
+    letters = [ch for ch in text_value if ch.isalpha()]
+    if not letters:
+        return 0.0
+    return sum(1 for ch in letters if ch.isupper()) / len(letters)
+
+
+def moderation_status_for(kind, parts):
+    joined = " ".join(part for part in parts if part).strip()
+    reasons = []
+    if not joined:
+        return "approved", ""
+    if any(pattern.search(joined) for pattern in SPAM_PATTERNS):
+        reasons.append("Suspicious promotional or spammy language.")
+    if url_count(joined) > (1 if kind == "topic" else 2):
+        reasons.append("Too many links for a public-first submission.")
+    if caps_ratio(joined) > 0.55 and len(joined) > 48:
+        reasons.append("Excessive all-caps / shouty formatting.")
+    if re.search(r"(.)\1{7,}", joined):
+        reasons.append("Repeated characters or formatting looks automated.")
+    return ("held", "; ".join(reasons)) if reasons else ("approved", "")
+
+
+def log_moderation_event(conn, entity_kind, entity_id, action, actor, note=""):
+    conn.execute(
+        """
+        INSERT INTO moderation_events (id, entity_kind, entity_id, action, actor, note, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        """,
+        (f"MOD-{uuid.uuid4().hex[:10]}", entity_kind, entity_id, action, actor, note, iso_now_utc()),
+    )
 
 
 def upsert_vote(conn, proposal_id, viewer_token):
     proposal = conn.execute(
-        "SELECT cycle_id FROM topic_proposals WHERE id = ?",
+        "SELECT cycle_id, status FROM topic_proposals WHERE id = ?",
         (proposal_id,),
     ).fetchone()
-    if not proposal:
-        raise ValueError("That topic proposal does not exist anymore.")
+    if not proposal or proposal["status"] != "approved":
+        raise ValueError("That topic proposal is not available for public voting.")
     now = iso_now_utc()
     conn.execute(
         """
@@ -425,24 +732,43 @@ def create_topic_proposal(conn, payload, viewer_token):
     question = str(payload.get("question", "")).strip()
     why_now = str(payload.get("whyNow", "")).strip() or "Suggested by the community for the next vote cycle."
     evidence_lane = str(payload.get("evidenceLane", "")).strip() or "Primary reporting, official statements, and source comparison."
-    if not title:
-        raise ValueError("Topic title is required.")
-    if not question:
-        raise ValueError("Debate question is required.")
+
+    if len(title) < 5:
+        raise ValueError("Topic title is too short.")
+    if len(title) > 120:
+        raise ValueError("Topic title is too long.")
+    if len(question) < 18:
+        raise ValueError("Debate question needs a little more detail.")
+    if len(question) > 260:
+        raise ValueError("Debate question is too long.")
+
+    assert_rate_limit(conn, viewer_token, "topic-proposal", 4, 60 * 60 * 6)
     cycle_id = ensure_cycle(conn)
-    slug = slugify(title)
-    proposal_id = f"{cycle_id}:{slug}:{uuid.uuid4().hex[:8]}"
+
+    duplicate = conn.execute(
+        """
+        SELECT id FROM topic_proposals
+        WHERE cycle_id = ? AND lower(title) = lower(?) AND lower(question) = lower(?) AND status != 'rejected'
+        LIMIT 1
+        """,
+        (cycle_id, title, question),
+    ).fetchone()
+    if duplicate:
+        raise ValueError("That topic is already on the board.")
+
+    status, moderation_reason = moderation_status_for("topic", [title, question, why_now, evidence_lane])
+    proposal_id = f"{cycle_id}:{slugify(title)}:{uuid.uuid4().hex[:8]}"
     now = iso_now_utc()
     conn.execute(
         """
         INSERT INTO topic_proposals
-            (id, cycle_id, slug, title, question, why_now, evidence_lane, base_votes, created_by, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (id, cycle_id, slug, title, question, why_now, evidence_lane, base_votes, created_by, created_at, updated_at, source_refs, origin, status, moderation_reason)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             proposal_id,
             cycle_id,
-            slug,
+            slugify(title),
             title,
             question,
             why_now,
@@ -451,13 +777,26 @@ def create_topic_proposal(conn, payload, viewer_token):
             viewer_token or "anonymous",
             now,
             now,
+            json.dumps([], ensure_ascii=True),
+            "community",
+            status,
+            moderation_reason,
         ),
     )
-    if viewer_token:
+    if status == "approved" and viewer_token:
         upsert_vote(conn, proposal_id, viewer_token)
     else:
         conn.commit()
-    return proposal_id
+    if status == "held":
+        log_moderation_event(conn, "topic_proposal", proposal_id, "held", viewer_token or "anonymous", moderation_reason)
+        conn.commit()
+    return {
+        "id": proposal_id,
+        "status": status,
+        "message": "Topic received and queued for moderation before it goes on the public board."
+        if status == "held"
+        else "Topic added to the vote board and backed by your vote.",
+    }
 
 
 def create_comment(conn, payload, viewer_token):
@@ -466,56 +805,78 @@ def create_comment(conn, payload, viewer_token):
     parent_id = str(payload.get("parentId", "")).strip() or None
     body = str(payload.get("body", "")).strip()
     author = str(payload.get("author", "")).strip() or display_name_for_token(viewer_token)
+
     if not thread_id:
         raise ValueError("threadId is required.")
     if not round_id:
         raise ValueError("roundId is required.")
-    if not body:
-        raise ValueError("Comment body is required.")
+    if len(body) < 4:
+        raise ValueError("Reply is too short.")
+    if len(body) > 1200:
+        raise ValueError("Reply is too long.")
+
+    assert_rate_limit(conn, viewer_token, "comment", 8, 60 * 15)
+    status, moderation_reason = moderation_status_for("comment", [body, author])
     comment_id = f"CMT-{uuid.uuid4().hex[:10]}"
     now = iso_now_utc()
     conn.execute(
         """
-        INSERT INTO comments (id, thread_id, round_id, parent_id, author_name, voter_token, body, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO comments (id, thread_id, round_id, parent_id, author_name, voter_token, body, created_at, status, moderation_reason)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
-        (comment_id, thread_id, round_id, parent_id, author, viewer_token or "anonymous", body, now),
+        (comment_id, thread_id, round_id, parent_id, author, viewer_token or "anonymous", body, now, status, moderation_reason),
     )
+    if status == "held":
+        log_moderation_event(conn, "comment", comment_id, "held", viewer_token or "anonymous", moderation_reason)
     conn.commit()
     row = conn.execute("SELECT * FROM comments WHERE id = ?", (comment_id,)).fetchone()
-    return serialize_comment(row)
+    return serialize_comment(row), {
+        "id": comment_id,
+        "status": status,
+        "message": "Reply received and queued for moderation."
+        if status == "held"
+        else "Reply posted.",
+    }
 
 
-def delete_submitted_source(conn, source_id):
-    conn.execute("DELETE FROM submitted_sources WHERE id = ?", (source_id,))
-    conn.commit()
-
-
-def upsert_submitted_source(conn, payload):
+def upsert_submitted_source(conn, payload, viewer_token):
     raw_url = str(payload.get("url", "")).strip()
     parsed = urlparse(raw_url)
     if parsed.scheme not in {"http", "https"} or not parsed.netloc:
-        raise ValueError("Invalid article URL")
+        raise ValueError("Invalid article URL.")
+
+    assert_rate_limit(conn, viewer_token, "source-submit", 6, 60 * 60 * 6)
+
+    duplicate = conn.execute(
+        "SELECT * FROM submitted_sources WHERE url = ? AND status != 'rejected' ORDER BY submitted_at DESC LIMIT 1",
+        (raw_url,),
+    ).fetchone()
+    if duplicate:
+        return serialize_source(duplicate), {
+            "status": "duplicate",
+            "message": "That source is already in the queue.",
+        }
+
+    title = str(payload.get("title", "")).strip()
+    note = str(payload.get("note", "")).strip()
+    cadence = payload.get("cadence") if payload.get("cadence") in {"hourly", "daily"} else "daily"
+    status, moderation_reason = moderation_status_for("source", [raw_url, title, note])
+    queue_status = "queued" if status == "approved" else "held"
     source = {
         "id": payload.get("id") or f"U-{uuid.uuid4().hex[:12]}",
         "url": raw_url,
-        "title": str(payload.get("title", "")).strip(),
-        "note": str(payload.get("note", "")).strip(),
-        "cadence": payload.get("cadence") if payload.get("cadence") in {"hourly", "daily"} else "daily",
+        "title": title,
+        "note": note,
+        "cadence": cadence,
         "submitted_at": payload.get("submittedAt") or iso_now_utc(),
-        "status": "queued",
+        "status": queue_status,
+        "submitted_by": viewer_token or "anonymous",
+        "moderation_reason": moderation_reason,
     }
     conn.execute(
         """
-        INSERT INTO submitted_sources (id, url, title, note, cadence, submitted_at, status)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(id) DO UPDATE SET
-            url = excluded.url,
-            title = excluded.title,
-            note = excluded.note,
-            cadence = excluded.cadence,
-            submitted_at = excluded.submitted_at,
-            status = excluded.status
+        INSERT INTO submitted_sources (id, url, title, note, cadence, submitted_at, status, submitted_by, moderation_reason)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             source["id"],
@@ -525,10 +886,57 @@ def upsert_submitted_source(conn, payload):
             source["cadence"],
             source["submitted_at"],
             source["status"],
+            source["submitted_by"],
+            source["moderation_reason"],
         ),
     )
+    if source["status"] == "held":
+        log_moderation_event(conn, "submitted_source", source["id"], "held", viewer_token or "anonymous", moderation_reason)
     conn.commit()
-    return source
+    return source, {
+        "status": source["status"],
+        "message": "Source queued for processing."
+        if source["status"] == "queued"
+        else "Source received and queued for moderation.",
+    }
+
+
+def delete_submitted_source(conn, source_id, viewer_token, is_admin=False):
+    row = conn.execute("SELECT * FROM submitted_sources WHERE id = ?", (source_id,)).fetchone()
+    if not row:
+        return
+    if not is_admin and row["submitted_by"] not in {"", viewer_token}:
+        raise PermissionError("You can only remove sources you submitted.")
+    conn.execute("DELETE FROM submitted_sources WHERE id = ?", (source_id,))
+    conn.commit()
+
+
+def parse_feed_datetime(value):
+    if not value:
+        return None
+    try:
+        return parsedate_to_datetime(value).astimezone(timezone.utc)
+    except (TypeError, ValueError, IndexError):
+        return None
+
+
+def source_weight(feed_name):
+    return {
+        "Reuters World": 4.5,
+        "Reuters Politics": 4.5,
+        "Reuters Business": 4.0,
+        "BBC World": 3.8,
+        "The Guardian World": 3.5,
+        "Google News": 2.6,
+    }.get(feed_name, 2.5)
+
+
+def text_contains_keyword(text_value, keyword):
+    normalized_keyword = str(keyword or "").strip().lower()
+    if not normalized_keyword:
+        return False
+    pattern = r"\b" + re.escape(normalized_keyword).replace(r"\ ", r"[\s\-]+") + r"\b"
+    return re.search(pattern, text_value.lower()) is not None
 
 
 def fetch_feed_items():
@@ -547,7 +955,7 @@ def fetch_feed_items():
         channel = root.find("channel")
         if channel is None:
             continue
-        for item in channel.findall("item")[:12]:
+        for item in channel.findall("item")[:14]:
             title = (item.findtext("title") or "").strip()
             link = (item.findtext("link") or "").strip()
             published = (item.findtext("pubDate") or "").strip()
@@ -559,6 +967,7 @@ def fetch_feed_items():
                     "title": title,
                     "link": link,
                     "published": published,
+                    "published_dt": parse_feed_datetime(published),
                 }
             )
     deduped = []
@@ -570,84 +979,6 @@ def fetch_feed_items():
         seen.add(key)
         deduped.append(item)
     return deduped
-
-
-def topic_from_headline(item, index):
-    headline = item["title"]
-    lowered = headline.lower()
-
-    if "gaza" in lowered or "ceasefire" in lowered or "cease-fire" in lowered:
-        return {
-            "slug": "gaza-ceasefire",
-            "title": "Gaza cease-fire diplomacy",
-            "question": "Will the latest Gaza cease-fire push change the war's trajectory, or is diplomacy mostly buying headlines while battlefield logic stays the same?",
-            "why_now": f"{item['feed']} is pushing fresh cease-fire reporting back to the top of the agenda.",
-            "evidence_lane": "Mediator statements, humanitarian access, cease-fire text, and battlefield follow-through.",
-            "base_votes": max(18 - index * 2, 8),
-        }
-
-    if "tariff" in lowered or "trade" in lowered or "china" in lowered:
-        return {
-            "slug": "trade-tariffs",
-            "title": "U.S.-China tariff escalation",
-            "question": "Do fresh tariff threats against China create real leverage, or mostly raise costs while both sides sell toughness to domestic audiences?",
-            "why_now": f"{item['feed']} is elevating tariff politics back into the live geopolitical cycle.",
-            "evidence_lane": "Tariff schedules, import-price effects, retaliation risk, and alliance responses.",
-            "base_votes": max(17 - index * 2, 7),
-        }
-
-    if "iran" in lowered:
-        return {
-            "slug": "iran-ceasefire-followthrough",
-            "title": "Iran cease-fire follow-through",
-            "question": "Is the current Iran cease-fire actually stabilizing the region, or just freezing the same risks while each side claims victory?",
-            "why_now": f"{item['feed']} is signaling that the Iran file is still unresolved after the first wave of strikes and bargaining.",
-            "evidence_lane": "Cease-fire reporting, shipping attacks, proxy activity, and inspection or diplomacy updates.",
-            "base_votes": max(16 - index * 2, 6),
-        }
-
-    if "chip" in lowered or "semiconductor" in lowered or "ai" in lowered:
-        return {
-            "slug": "ai-chip-controls",
-            "title": "AI chip export controls",
-            "question": "Are AI chip controls actually slowing frontier capability, or mostly rerouting supply chains while politicians pretend they changed the curve?",
-            "why_now": f"{item['feed']} is putting compute, AI competition, or export controls back into the live policy fight.",
-            "evidence_lane": "Export rules, cloud workarounds, compute availability, and frontier model disclosures.",
-            "base_votes": max(15 - index * 2, 5),
-        }
-
-    if "election" in lowered or "campaign" in lowered or "vote" in lowered:
-        return {
-            "slug": "democracy-and-mandate",
-            "title": "Democracy and mandate",
-            "question": f'Does "{headline}" reflect a real democratic shift, or are campaigns outrunning what voters have actually signed up for?',
-            "why_now": f"{item['feed']} is making electoral legitimacy part of the live argument again.",
-            "evidence_lane": "Polling, turnout, party platforms, and institutional constraints after election-day rhetoric.",
-            "base_votes": max(14 - index * 2, 4),
-        }
-
-    return {
-        "slug": f"headline-{slugify(headline)[:28]}",
-        "title": headline.split(":")[0][:80],
-        "question": f'Does "{headline}" point to a real strategic shift, or is the public argument already outrunning the evidence?',
-        "why_now": f"{item['feed']} surfaced this as one of the current live arguments worth pressure-testing.",
-        "evidence_lane": "Primary reporting, official statements, and follow-through on the real-world effects.",
-        "base_votes": max(13 - index * 2, 3),
-    }
-
-
-def fallback_topic_candidates():
-    return [
-        {
-            "slug": proposal["slug"],
-            "title": proposal["title"],
-            "question": proposal["question"],
-            "why_now": proposal["why_now"],
-            "evidence_lane": proposal["evidence_lane"],
-            "base_votes": proposal["base_votes"],
-        }
-        for proposal in SEED_TOPIC_PROPOSALS[:3]
-    ]
 
 
 def headline_is_relevant_for_public_debate(headline):
@@ -689,50 +1020,192 @@ def headline_is_relevant_for_public_debate(headline):
         "lottery",
         "manifesto allegations",
     ]
-    if any(signal in lowered for signal in negative_signals):
+    if any(text_contains_keyword(lowered, signal) for signal in negative_signals):
         return False
-    return any(signal in lowered for signal in positive_signals)
+    return any(text_contains_keyword(lowered, signal) for signal in positive_signals)
+
+
+def best_blueprint_for_item(item):
+    lowered = item["title"].lower()
+    best = None
+    best_score = 0
+    for blueprint in ISSUE_BLUEPRINTS:
+        matches = sum(1 for keyword in blueprint["keywords"] if text_contains_keyword(lowered, keyword))
+        if not matches:
+            continue
+        score = matches * 10 + blueprint["priority"]
+        if score > best_score:
+            best = blueprint
+            best_score = score
+    return best, best_score
+
+
+def fallback_topic_candidates():
+    return [
+        {
+            "slug": proposal["slug"],
+            "title": proposal["title"],
+            "question": proposal["question"],
+            "why_now": proposal["why_now"],
+            "evidence_lane": proposal["evidence_lane"],
+            "base_votes": proposal["base_votes"],
+            "origin": proposal.get("origin", "seed"),
+            "source_refs": [],
+        }
+        for proposal in SEED_TOPIC_PROPOSALS[:3]
+    ]
+
+
+def generic_topic_from_headline(item, index):
+    headline = item["title"]
+    return {
+        "slug": f"headline-{slugify(headline)[:28]}",
+        "title": headline.split(":")[0][:80] or "Live public argument",
+        "question": f'Does "{headline}" point to a real strategic shift, or is the public argument already outrunning the evidence?',
+        "why_now": f"{item['feed']} surfaced this as one of the live disputes now fighting for public attention.",
+        "evidence_lane": "Primary reporting, official statements, and whether the real-world follow-through matches the claim.",
+        "base_votes": max(18 - index * 2, 8),
+        "origin": "news",
+        "source_refs": [
+            {
+                "feed": item["feed"],
+                "title": item["title"],
+                "link": item["link"],
+                "published": item["published"],
+            }
+        ],
+    }
+
+
+def build_topic_from_cluster(cluster, rank_index):
+    blueprint = cluster["blueprint"]
+    items = sorted(
+        cluster["items"],
+        key=lambda item: (
+            source_weight(item["feed"]),
+            item["published_dt"].timestamp() if item["published_dt"] else 0,
+        ),
+        reverse=True,
+    )
+    feed_names = []
+    for item in items:
+        if item["feed"] not in feed_names:
+            feed_names.append(item["feed"])
+    source_refs = [
+        {
+            "feed": item["feed"],
+            "title": item["title"],
+            "link": item["link"],
+            "published": item["published"],
+        }
+        for item in items[:3]
+    ]
+    if len(feed_names) > 2:
+        feed_line = ", ".join(feed_names[:2]) + f", and {feed_names[2]}"
+    elif len(feed_names) == 2:
+        feed_line = " and ".join(feed_names)
+    else:
+        feed_line = feed_names[0]
+    return {
+        "slug": blueprint["slug"],
+        "title": blueprint["title"],
+        "question": blueprint["question"],
+        "why_now": f"{feed_line} all surfaced fresh movement on this issue, which is exactly when public claims start outrunning the underlying evidence.",
+        "evidence_lane": blueprint["evidence_lane"],
+        "base_votes": max(34 - rank_index * 6 + min(len(cluster["items"]), 3), 15),
+        "origin": "news",
+        "source_refs": source_refs,
+    }
 
 
 def generate_topic_candidates():
-    items = fetch_feed_items()
+    items = [item for item in fetch_feed_items() if headline_is_relevant_for_public_debate(item["title"])]
     if not items:
         return fallback_topic_candidates()
-    candidates = []
-    seen_slugs = set()
+
+    clusters = {}
+    generics = []
     for index, item in enumerate(items):
-        if not headline_is_relevant_for_public_debate(item["title"]):
+        blueprint, score = best_blueprint_for_item(item)
+        if not blueprint:
+            generics.append((index, item))
             continue
-        topic = topic_from_headline(item, index)
-        if topic["slug"] in seen_slugs:
+        cluster = clusters.setdefault(
+            blueprint["slug"],
+            {"blueprint": blueprint, "items": [], "score": 0.0, "feeds": set()},
+        )
+        cluster["items"].append(item)
+        cluster["score"] += score + source_weight(item["feed"])
+        cluster["feeds"].add(item["feed"])
+        if item["published_dt"]:
+            age_hours = max(0, (datetime.now(timezone.utc) - item["published_dt"]).total_seconds() / 3600)
+            cluster["score"] += max(0, 8 - min(age_hours, 8))
+
+    ranked_clusters = sorted(
+        clusters.values(),
+        key=lambda cluster: (cluster["score"], len(cluster["feeds"]), len(cluster["items"])),
+        reverse=True,
+    )
+
+    proposals = []
+    seen_slugs = set()
+    for rank_index, cluster in enumerate(ranked_clusters):
+        proposal = build_topic_from_cluster(cluster, rank_index)
+        if proposal["slug"] in seen_slugs:
             continue
-        seen_slugs.add(topic["slug"])
-        candidates.append(topic)
-        if len(candidates) == 3:
+        proposals.append(proposal)
+        seen_slugs.add(proposal["slug"])
+        if len(proposals) == 3:
+            return proposals
+
+    for index, item in generics:
+        proposal = generic_topic_from_headline(item, len(proposals) + index)
+        if proposal["slug"] in seen_slugs:
+            continue
+        proposals.append(proposal)
+        seen_slugs.add(proposal["slug"])
+        if len(proposals) == 3:
+            return proposals
+
+    for fallback in fallback_topic_candidates():
+        if fallback["slug"] in seen_slugs:
+            continue
+        proposals.append(fallback)
+        seen_slugs.add(fallback["slug"])
+        if len(proposals) == 3:
             break
-    if len(candidates) < 3:
-        for fallback in fallback_topic_candidates():
-            if fallback["slug"] in seen_slugs:
-                continue
-            candidates.append(fallback)
-            seen_slugs.add(fallback["slug"])
-            if len(candidates) == 3:
-                break
-    return candidates or fallback_topic_candidates()
+
+    return proposals or fallback_topic_candidates()
 
 
-def replace_cycle_topics(conn, cycle_id, proposals):
+def replace_cycle_topics(conn, cycle_id, proposals, actor="daily-refresh"):
     now = iso_now_utc()
-    conn.execute("DELETE FROM topic_votes WHERE cycle_id = ?", (cycle_id,))
-    conn.execute("DELETE FROM topic_proposals WHERE cycle_id = ?", (cycle_id,))
+    refreshable_ids = [
+        row["id"]
+        for row in conn.execute(
+            "SELECT id FROM topic_proposals WHERE cycle_id = ? AND origin IN ('seed', 'news')",
+            (cycle_id,),
+        ).fetchall()
+    ]
+    if refreshable_ids:
+        placeholders = ", ".join("?" for _ in refreshable_ids)
+        conn.execute(
+            f"DELETE FROM topic_votes WHERE proposal_id IN ({placeholders})",
+            refreshable_ids,
+        )
+        conn.execute(
+            f"DELETE FROM topic_proposals WHERE id IN ({placeholders})",
+            refreshable_ids,
+        )
+
     for proposal in proposals:
-        slug = slugify(proposal["slug"] or proposal["title"])
+        slug = slugify(proposal.get("slug") or proposal["title"])
         proposal_id = f"{cycle_id}:{slug}"
         conn.execute(
             """
             INSERT INTO topic_proposals
-                (id, cycle_id, slug, title, question, why_now, evidence_lane, base_votes, created_by, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (id, cycle_id, slug, title, question, why_now, evidence_lane, base_votes, created_by, created_at, updated_at, source_refs, origin, status, moderation_reason)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 proposal_id,
@@ -743,12 +1216,180 @@ def replace_cycle_topics(conn, cycle_id, proposals):
                 proposal.get("why_now", ""),
                 proposal.get("evidence_lane", ""),
                 int(proposal.get("base_votes", 0)),
-                "daily-refresh",
+                actor,
                 now,
                 now,
+                json.dumps(proposal.get("source_refs", []), ensure_ascii=True),
+                proposal.get("origin", "news"),
+                "approved",
+                "",
             ),
         )
     conn.commit()
+
+
+def review_entity(conn, entity_kind, entity_id, action, actor, note=""):
+    if action not in {"approve", "reject"}:
+        raise ValueError("Unsupported review action.")
+
+    if entity_kind == "proposal":
+        status = "approved" if action == "approve" else "rejected"
+        conn.execute(
+            "UPDATE topic_proposals SET status = ?, moderation_reason = ? WHERE id = ?",
+            (status, note if action == "reject" else "", entity_id),
+        )
+        log_moderation_event(conn, "topic_proposal", entity_id, action, actor, note)
+    elif entity_kind == "comment":
+        status = "approved" if action == "approve" else "rejected"
+        conn.execute(
+            "UPDATE comments SET status = ?, moderation_reason = ? WHERE id = ?",
+            (status, note if action == "reject" else "", entity_id),
+        )
+        log_moderation_event(conn, "comment", entity_id, action, actor, note)
+    elif entity_kind == "source":
+        status = "queued" if action == "approve" else "rejected"
+        conn.execute(
+            "UPDATE submitted_sources SET status = ?, moderation_reason = ? WHERE id = ?",
+            (status, note if action == "reject" else "", entity_id),
+        )
+        log_moderation_event(conn, "submitted_source", entity_id, action, actor, note)
+    else:
+        raise ValueError("Unsupported queue kind.")
+    conn.commit()
+
+
+def set_featured_proposal(conn, cycle_id, proposal_id, actor, note=""):
+    proposal = conn.execute(
+        "SELECT id FROM topic_proposals WHERE id = ? AND cycle_id = ? AND status = 'approved'",
+        (proposal_id, cycle_id),
+    ).fetchone()
+    if not proposal:
+        raise ValueError("That proposal is not available to feature.")
+    now = iso_now_utc()
+    conn.execute(
+        """
+        INSERT INTO board_state (cycle_id, featured_proposal_id, promoted_proposal_id, promoted_title, promoted_question, note, updated_at, updated_by)
+        VALUES (?, ?, NULL, '', '', ?, ?, ?)
+        ON CONFLICT(cycle_id) DO UPDATE SET
+            featured_proposal_id = excluded.featured_proposal_id,
+            note = excluded.note,
+            updated_at = excluded.updated_at,
+            updated_by = excluded.updated_by
+        """,
+        (cycle_id, proposal_id, note, now, actor),
+    )
+    conn.commit()
+
+
+def clear_featured_proposal(conn, cycle_id, actor):
+    now = iso_now_utc()
+    conn.execute(
+        """
+        INSERT INTO board_state (cycle_id, featured_proposal_id, promoted_proposal_id, promoted_title, promoted_question, note, updated_at, updated_by)
+        VALUES (?, NULL, NULL, '', '', '', ?, ?)
+        ON CONFLICT(cycle_id) DO UPDATE SET
+            featured_proposal_id = NULL,
+            updated_at = excluded.updated_at,
+            updated_by = excluded.updated_by
+        """,
+        (cycle_id, now, actor),
+    )
+    conn.commit()
+
+
+def promote_proposal_to_thread(conn, cycle_id, proposal_id, actor, note=""):
+    proposal = conn.execute(
+        "SELECT * FROM topic_proposals WHERE id = ? AND cycle_id = ? AND status = 'approved'",
+        (proposal_id, cycle_id),
+    ).fetchone()
+    if not proposal:
+        raise ValueError("That proposal is not available to promote.")
+    now = iso_now_utc()
+    conn.execute(
+        """
+        INSERT INTO board_state (cycle_id, featured_proposal_id, promoted_proposal_id, promoted_title, promoted_question, note, updated_at, updated_by)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(cycle_id) DO UPDATE SET
+            featured_proposal_id = excluded.featured_proposal_id,
+            promoted_proposal_id = excluded.promoted_proposal_id,
+            promoted_title = excluded.promoted_title,
+            promoted_question = excluded.promoted_question,
+            note = excluded.note,
+            updated_at = excluded.updated_at,
+            updated_by = excluded.updated_by
+        """,
+        (
+            cycle_id,
+            proposal_id,
+            proposal_id,
+            proposal["title"],
+            proposal["question"],
+            note,
+            now,
+            actor,
+        ),
+    )
+    conn.commit()
+
+
+def clear_promoted_thread(conn, cycle_id, actor):
+    now = iso_now_utc()
+    conn.execute(
+        """
+        INSERT INTO board_state (cycle_id, featured_proposal_id, promoted_proposal_id, promoted_title, promoted_question, note, updated_at, updated_by)
+        VALUES (?, NULL, NULL, '', '', '', ?, ?)
+        ON CONFLICT(cycle_id) DO UPDATE SET
+            promoted_proposal_id = NULL,
+            promoted_title = '',
+            promoted_question = '',
+            note = '',
+            updated_at = excluded.updated_at,
+            updated_by = excluded.updated_by
+        """,
+        (cycle_id, now, actor),
+    )
+    conn.commit()
+
+
+def refresh_daily_topics(conn=None, actor="daily-refresh"):
+    owns_connection = conn is None
+    if owns_connection:
+        conn = db_connection()
+    try:
+        ensure_db(conn)
+        cycle_id = ensure_cycle(conn)
+        proposals = generate_topic_candidates()
+        replace_cycle_topics(conn, cycle_id, proposals, actor=actor)
+        return cycle_id, proposals
+    finally:
+        if owns_connection:
+            conn.close()
+
+
+def host_is_local(handler):
+    host = handler.headers.get("Host", "").split(":")[0].lower()
+    return host in {"127.0.0.1", "localhost", "::1"}
+
+
+def admin_actor(handler, query=None, payload=None):
+    header_token = handler.headers.get("X-Admin-Token", "").strip()
+    query_token = ""
+    if query:
+        values = query.get("adminToken") or []
+        if values:
+            query_token = values[0].strip()
+    payload_token = str(payload.get("adminToken", "")).strip() if payload else ""
+    token = header_token or payload_token or query_token
+
+    if ADMIN_TOKEN:
+        if token != ADMIN_TOKEN:
+            raise PermissionError("Admin token required.")
+        return "admin-token"
+
+    if host_is_local(handler):
+        return "local-admin"
+
+    raise PermissionError("Admin token not configured.")
 
 
 class DebatebookHandler(SimpleHTTPRequestHandler):
@@ -756,8 +1397,15 @@ class DebatebookHandler(SimpleHTTPRequestHandler):
         super().__init__(*args, directory=str(APP_ROOT), **kwargs)
 
     def end_headers(self):
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type, X-Viewer-Token")
+        origin = self.headers.get("Origin", "")
+        allow_origin = "*"
+        if ALLOWED_ORIGINS:
+            allow_origin = origin if origin in ALLOWED_ORIGINS else ALLOWED_ORIGINS[0]
+            self.send_header("Vary", "Origin")
+        elif origin:
+            allow_origin = origin
+        self.send_header("Access-Control-Allow-Origin", allow_origin)
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, X-Viewer-Token, X-Admin-Token")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
         super().end_headers()
 
@@ -790,7 +1438,14 @@ class DebatebookHandler(SimpleHTTPRequestHandler):
         query = parse_qs(parsed.query)
 
         if parsed.path == "/api/health":
-            self.send_json({"ok": True, "time": iso_now_utc()})
+            self.send_json(
+                {
+                    "ok": True,
+                    "time": iso_now_utc(),
+                    "timezone": str(APP_TIMEZONE),
+                    "dbPath": str(DB_PATH),
+                }
+            )
             return
 
         if parsed.path == "/api/bootstrap":
@@ -798,6 +1453,17 @@ class DebatebookHandler(SimpleHTTPRequestHandler):
             with db_connection() as conn:
                 ensure_db(conn)
                 self.send_json(build_bootstrap_payload(conn, viewer_token))
+            return
+
+        if parsed.path == "/api/admin/bootstrap":
+            try:
+                admin_actor(self, query=query)
+            except PermissionError as exc:
+                self.send_json({"error": str(exc)}, 403)
+                return
+            with db_connection() as conn:
+                ensure_db(conn)
+                self.send_json(build_admin_bootstrap(conn))
             return
 
         if parsed.path == "/api/submitted-sources":
@@ -821,28 +1487,36 @@ class DebatebookHandler(SimpleHTTPRequestHandler):
             self.send_json({"error": error}, 400)
             return
 
-        viewer_token = self.read_viewer_token(payload=payload)
+        query = parse_qs(urlparse(self.path).query)
+        viewer_token = self.read_viewer_token(payload=payload, query=query)
 
         try:
             with db_connection() as conn:
                 ensure_db(conn)
 
                 if parsed.path == "/api/submitted-sources":
-                    source = upsert_submitted_source(conn, payload)
+                    source, submission = upsert_submitted_source(conn, payload, viewer_token)
                     self.send_json(
                         {
                             "source": serialize_source(
                                 conn.execute("SELECT * FROM submitted_sources WHERE id = ?", (source["id"],)).fetchone()
                             ),
                             "sources": [serialize_source(row) for row in submitted_source_rows(conn)],
+                            "submission": submission,
                         },
                         201,
                     )
                     return
 
                 if parsed.path == "/api/topic-proposals":
-                    create_topic_proposal(conn, payload, viewer_token)
-                    self.send_json(build_bootstrap_payload(conn, viewer_token), 201)
+                    submission = create_topic_proposal(conn, payload, viewer_token)
+                    self.send_json(
+                        {
+                            **build_bootstrap_payload(conn, viewer_token),
+                            "submission": submission,
+                        },
+                        201,
+                    )
                     return
 
                 if parsed.path == "/api/topic-votes":
@@ -858,18 +1532,79 @@ class DebatebookHandler(SimpleHTTPRequestHandler):
                     return
 
                 if parsed.path == "/api/comments":
-                    comment = create_comment(conn, payload, viewer_token)
+                    comment, submission = create_comment(conn, payload, viewer_token)
                     self.send_json(
                         {
-                            "comment": comment,
+                            "comment": comment if submission["status"] == "approved" else None,
                             "commentsByRound": comments_by_round(conn),
+                            "submission": submission,
                         },
                         201,
                     )
                     return
 
+                if parsed.path.startswith("/api/admin/"):
+                    actor = admin_actor(self, payload=payload)
+                    cycle = active_cycle_row(conn)
+                    cycle_id = cycle["id"] if cycle else ensure_cycle(conn)
+
+                    if parsed.path == "/api/admin/review":
+                        review_entity(
+                            conn,
+                            str(payload.get("kind", "")).strip(),
+                            str(payload.get("id", "")).strip(),
+                            str(payload.get("action", "")).strip(),
+                            actor,
+                            str(payload.get("note", "")).strip(),
+                        )
+                        self.send_json(build_admin_bootstrap(conn), 201)
+                        return
+
+                    if parsed.path == "/api/admin/feature-proposal":
+                        proposal_id = str(payload.get("proposalId", "")).strip()
+                        if not proposal_id:
+                            self.send_json({"error": "proposalId is required"}, 400)
+                            return
+                        set_featured_proposal(conn, cycle_id, proposal_id, actor, str(payload.get("note", "")).strip())
+                        self.send_json(build_admin_bootstrap(conn), 201)
+                        return
+
+                    if parsed.path == "/api/admin/clear-featured":
+                        clear_featured_proposal(conn, cycle_id, actor)
+                        self.send_json(build_admin_bootstrap(conn), 201)
+                        return
+
+                    if parsed.path == "/api/admin/promote-thread":
+                        proposal_id = str(payload.get("proposalId", "")).strip()
+                        if not proposal_id:
+                            self.send_json({"error": "proposalId is required"}, 400)
+                            return
+                        promote_proposal_to_thread(conn, cycle_id, proposal_id, actor, str(payload.get("note", "")).strip())
+                        self.send_json(build_admin_bootstrap(conn), 201)
+                        return
+
+                    if parsed.path == "/api/admin/clear-promoted":
+                        clear_promoted_thread(conn, cycle_id, actor)
+                        self.send_json(build_admin_bootstrap(conn), 201)
+                        return
+
+                    if parsed.path == "/api/admin/refresh-topics":
+                        cycle_id, proposals = refresh_daily_topics(conn, actor=actor)
+                        self.send_json(
+                            {
+                                "cycleId": cycle_id,
+                                "proposals": proposals,
+                                "admin": build_admin_bootstrap(conn),
+                            },
+                            201,
+                        )
+                        return
+
         except ValueError as exc:
             self.send_json({"error": str(exc)}, 400)
+            return
+        except PermissionError as exc:
+            self.send_json({"error": str(exc)}, 403)
             return
 
         self.send_error(404)
@@ -882,31 +1617,32 @@ class DebatebookHandler(SimpleHTTPRequestHandler):
             return
 
         source_id = unquote(parsed.path[len(prefix) :])
-        with db_connection() as conn:
-            ensure_db(conn)
-            delete_submitted_source(conn, source_id)
-            self.send_json({"sources": [serialize_source(row) for row in submitted_source_rows(conn)]})
-
-
-def refresh_daily_topics():
-    with db_connection() as conn:
-        ensure_db(conn)
-        cycle_id = ensure_cycle(conn)
-        proposals = generate_topic_candidates()
-        replace_cycle_topics(conn, cycle_id, proposals)
-        return cycle_id, proposals
+        viewer_token = self.read_viewer_token()
+        try:
+            with db_connection() as conn:
+                ensure_db(conn)
+                is_admin = False
+                try:
+                    admin_actor(self)
+                    is_admin = True
+                except PermissionError:
+                    is_admin = False
+                delete_submitted_source(conn, source_id, viewer_token, is_admin=is_admin)
+                self.send_json({"sources": [serialize_source(row) for row in submitted_source_rows(conn)]})
+        except PermissionError as exc:
+            self.send_json({"error": str(exc)}, 403)
 
 
 def main(argv=None):
     argv = argv or sys.argv[1:]
     if argv and argv[0] == "refresh-topics":
-        cycle_id, proposals = refresh_daily_topics()
+        cycle_id, proposals = refresh_daily_topics(actor="cli-refresh")
         print(f"Refreshed {len(proposals)} topic candidates for {cycle_id}")
         for proposal in proposals:
             print(f"- {proposal['title']}: {proposal['question']}")
         return
 
-    port = int(argv[0]) if argv else 3100
+    port = int(argv[0]) if argv else int(os.environ.get("PORT", "3100"))
     with db_connection() as conn:
         ensure_db(conn)
     server = ThreadingHTTPServer(("", port), DebatebookHandler)

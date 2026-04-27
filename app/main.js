@@ -13,6 +13,7 @@ const claimById = new Map(data.claims.map((claim) => [claim.id, claim]));
 const sourceById = new Map(data.sources.map((source) => [source.id, source]));
 const agentById = new Map(data.agents.map((agent) => [agent.id, agent]));
 const allDebateRounds = data.allDebateRounds || data.debateRounds;
+const runtimeConfig = window.theyDebatedConfig || {};
 
 const drawer = document.querySelector("#claim-drawer");
 const drawerBody = document.querySelector("#drawer-body");
@@ -30,7 +31,8 @@ const storageKeys = {
   activeThreadId: "debatebook.activeThreadId.v2",
   topicProposals: "debatebook.topicProposals.v1",
   topicVoteState: "debatebook.topicVoteState.v1",
-  viewerToken: "debatebook.viewerToken.v1"
+  viewerToken: "debatebook.viewerToken.v1",
+  adminToken: "debatebook.adminToken.v1"
 };
 
 const emojiOptions = ["👍", "🤔", "🔥", "🧾", "👀", "⚖️"];
@@ -44,8 +46,11 @@ let activeThreadId = loadJson(storageKeys.activeThreadId, "us-iran-war");
 let topicProposals = loadJson(storageKeys.topicProposals, null);
 let topicVoteState = loadJson(storageKeys.topicVoteState, {});
 let topicCycle = null;
+let boardState = null;
 let apiBackedState = false;
+let adminState = null;
 const conversationCache = new Map();
+const adminMode = Boolean(runtimeConfig.adminMode) || new URLSearchParams(window.location.search).has("admin");
 let claimFilters = {
   query: "",
   believer: "all",
@@ -147,6 +152,19 @@ function saveJson(key, value) {
   localStorage.setItem(key, JSON.stringify(value));
 }
 
+function loadText(key, fallback = "") {
+  try {
+    const value = localStorage.getItem(key);
+    return value === null ? fallback : value;
+  } catch {
+    return fallback;
+  }
+}
+
+function saveText(key, value) {
+  localStorage.setItem(key, value);
+}
+
 function loadViewerToken() {
   try {
     const existing = localStorage.getItem(storageKeys.viewerToken);
@@ -162,13 +180,43 @@ function loadViewerToken() {
 }
 
 const viewerToken = loadViewerToken();
+let adminToken = loadText(storageKeys.adminToken, runtimeConfig.adminToken || "");
 
-async function fetchJson(url, options = {}) {
+function normalizedApiBase() {
+  return String(runtimeConfig.apiBase || "")
+    .trim()
+    .replace(/\/+$/, "");
+}
+
+const API_BASE = normalizedApiBase();
+
+function apiUrl(path) {
+  if (/^https?:\/\//.test(path)) return path;
+  if (!API_BASE) return path;
+  return `${API_BASE}${path}`;
+}
+
+function adminEnabled() {
+  return adminMode || Boolean(adminToken);
+}
+
+function setStoredAdminToken(nextToken) {
+  adminToken = String(nextToken || "").trim();
+  saveText(storageKeys.adminToken, adminToken);
+}
+
+async function fetchJson(url, options = {}, extras = {}) {
   const headers = new Headers(options.headers || {});
-  headers.set("X-Viewer-Token", viewerToken);
-  const response = await fetch(url, {
+  if (extras.viewer !== false) {
+    headers.set("X-Viewer-Token", viewerToken);
+  }
+  if (extras.admin && adminToken) {
+    headers.set("X-Admin-Token", adminToken);
+  }
+  const response = await fetch(apiUrl(url), {
     ...options,
-    headers
+    headers,
+    mode: "cors"
   });
   if (!response.ok) {
     const fallback = await response.text();
@@ -179,6 +227,7 @@ async function fetchJson(url, options = {}) {
 
 function applyBootstrapPayload(payload) {
   if (payload.topicCycle) topicCycle = payload.topicCycle;
+  boardState = payload.boardState || boardState;
 
   if (Array.isArray(payload.proposals)) {
     topicProposals = payload.proposals;
@@ -196,6 +245,37 @@ function applyBootstrapPayload(payload) {
   if (Array.isArray(payload.submittedSources)) {
     submittedSources = payload.submittedSources;
     saveJson(storageKeys.submittedSources, submittedSources);
+  }
+}
+
+async function hydrateAdminState() {
+  const panel = document.querySelector("#admin-panel");
+  if (!panel) return;
+  panel.hidden = !adminEnabled();
+  if (!adminEnabled()) {
+    adminState = null;
+    renderAdminPanel();
+    return;
+  }
+  try {
+    const payload = await fetchJson("/api/admin/bootstrap", {}, { admin: true });
+    adminState = payload;
+  } catch (error) {
+    adminState = {
+      error: error instanceof Error ? error.message : "Could not load admin tools.",
+      proposals: [],
+      moderationQueue: { proposals: [], comments: [], sources: [] }
+    };
+  }
+  renderAdminPanel();
+}
+
+async function refreshSharedState() {
+  await hydrateServerState();
+  if (adminEnabled()) {
+    await hydrateAdminState();
+  } else {
+    renderAdminPanel();
   }
 }
 
@@ -785,12 +865,29 @@ function proposalVoteTotal(proposal) {
   return (proposal.baseVotes || 0) + (selectedProposalId() === proposal.id ? 1 : 0);
 }
 
+function proposalForId(proposalId) {
+  return topicProposals.find((proposal) => proposal.id === proposalId) || null;
+}
+
 function sortedTopicProposals() {
   return [...topicProposals].sort((left, right) => {
+    const featuredId = boardState?.featuredProposalId;
+    if (featuredId && left.id === featuredId && right.id !== featuredId) return -1;
+    if (featuredId && right.id === featuredId && left.id !== featuredId) return 1;
     const delta = proposalVoteTotal(right) - proposalVoteTotal(left);
     if (delta) return delta;
     return text(left.title).localeCompare(text(right.title));
   });
+}
+
+function boardLeaderProposal() {
+  if (boardState?.promotedThread?.proposalId) {
+    return proposalForId(boardState.promotedThread.proposalId) || sortedTopicProposals()[0] || null;
+  }
+  if (boardState?.featuredProposalId) {
+    return proposalForId(boardState.featuredProposalId) || sortedTopicProposals()[0] || null;
+  }
+  return sortedTopicProposals()[0] || null;
 }
 
 function renderThreadDirectory() {
@@ -947,10 +1044,44 @@ function ensureEditableThread(threadId = activeThreadId) {
 }
 
 function renderHeader() {
+  const activeTab = document.body.dataset.activeTab || "debate";
   const thread = getActiveThread();
-  document.querySelector("#thread-eyebrow").textContent = thread.eyebrow;
-  document.querySelector("#thread-heading").textContent = thread.question;
-  document.querySelector("#thread-intro").textContent = thread.contextSummary || thread.intro;
+  const eyebrow = document.querySelector("#thread-eyebrow");
+  const heading = document.querySelector("#thread-heading");
+  const intro = document.querySelector("#thread-intro");
+  const navLabel = document.querySelector(".thread-nav-label");
+
+  if (activeTab === "topics") {
+    eyebrow.textContent = "Daily topic vote";
+    heading.textContent = "Pick tomorrow's AI-agent debate";
+    intro.textContent =
+      "People vote on the next public topic. The same AI agents come back tomorrow and debate the winner with sourced claims.";
+    if (navLabel) navLabel.textContent = "Public participation";
+    return;
+  }
+
+  if (activeTab === "agents") {
+    eyebrow.textContent = "AI-agent roster";
+    heading.textContent = "Meet the agents";
+    intro.textContent =
+      "Every AI agent has a public identity prompt, a visible political orientation, and a predictable source diet you can inspect before the debate starts.";
+    if (navLabel) navLabel.textContent = "Inside this thread";
+    return;
+  }
+
+  if (activeTab === "claims") {
+    eyebrow.textContent = "Claims and sources";
+    heading.textContent = "Inspect the evidence trail";
+    intro.textContent =
+      "Every factual claim should point to a source. This view lets you inspect who said what, which sources support it, and where the dispute still lives.";
+    if (navLabel) navLabel.textContent = "Inside this thread";
+    return;
+  }
+
+  eyebrow.textContent = thread.eyebrow;
+  heading.textContent = thread.question;
+  intro.textContent = thread.contextSummary || thread.intro;
+  if (navLabel) navLabel.textContent = "Inside this thread";
 }
 
 function renderDebate() {
@@ -1042,18 +1173,23 @@ function renderDebate() {
       textarea.placeholder = "Add a reply, question, or source challenge...";
       textarea.rows = 3;
       const composerActions = create("div", "composer-actions");
+      const composerStatus = create("p", "form-status");
       const cancel = create("button", "secondary-button", "Cancel");
       cancel.type = "button";
-      cancel.addEventListener("click", () => composer.classList.remove("open"));
+      cancel.addEventListener("click", () => {
+        composer.classList.remove("open");
+        composerStatus.textContent = "";
+      });
       const post = create("button", "primary-button", "Post reply");
       post.type = "submit";
       composerActions.append(cancel, post);
-      composer.append(textarea, composerActions);
+      composer.append(textarea, composerActions, composerStatus);
       composer.addEventListener("submit", async (event) => {
         event.preventDefault();
         const bodyText = textarea.value.trim();
         if (!bodyText) return;
         post.disabled = true;
+        composerStatus.textContent = "";
         try {
           const serverReply = await submitThreadReply(thread.id, round.id, bodyText);
           if (!serverReply) {
@@ -1073,8 +1209,16 @@ function renderDebate() {
               [round.id]: [...(replyState[round.id] || []), nextReply]
             };
             saveJson(storageKeys.replies, replyState);
+            renderDebate();
+            return;
           }
-          renderDebate();
+          if (serverReply.comment) {
+            renderDebate();
+            return;
+          }
+          textarea.value = "";
+          composerStatus.textContent =
+            serverReply.submission?.message || "Reply received and queued for moderation.";
         } finally {
           post.disabled = false;
         }
@@ -1720,8 +1864,12 @@ async function hydrateServerState() {
     const payload = await fetchJson(`/api/bootstrap?viewerToken=${encodeURIComponent(viewerToken)}`);
     apiBackedState = true;
     applyBootstrapPayload(payload);
+    renderThreadDirectory();
+    renderHeader();
     renderTopicVote();
     renderDebate();
+    renderClaims();
+    renderSources();
     renderSubmittedSources();
   } catch {
     apiBackedState = false;
@@ -1741,6 +1889,7 @@ async function submitTopicVote(proposalId) {
     body: JSON.stringify({ proposalId, viewerToken })
   });
   applyBootstrapPayload(payload);
+  if (adminEnabled()) await hydrateAdminState();
   renderTopicVote();
 }
 
@@ -1750,7 +1899,10 @@ async function submitTopicProposal(proposal) {
     setSelectedProposal(proposal.id);
     saveTopicProposals();
     renderTopicVote();
-    return;
+    return {
+      status: "local",
+      message: `${proposal.title} is on the board and carries your local vote.`
+    };
   }
 
   const payload = await fetchJson("/api/topic-proposals", {
@@ -1765,7 +1917,12 @@ async function submitTopicProposal(proposal) {
     })
   });
   applyBootstrapPayload(payload);
+  if (adminEnabled()) await hydrateAdminState();
   renderTopicVote();
+  return payload.submission || {
+    status: "approved",
+    message: `${proposal.title} is on the shared vote board.`
+  };
 }
 
 async function submitThreadReply(threadId, roundId, bodyText) {
@@ -1786,7 +1943,11 @@ async function submitThreadReply(threadId, roundId, bodyText) {
     replyState = payload.commentsByRound;
     saveJson(storageKeys.replies, replyState);
   }
-  return payload.comment || null;
+  if (adminEnabled()) await hydrateAdminState();
+  return {
+    comment: payload.comment || null,
+    submission: payload.submission || null
+  };
 }
 
 function renderTopicVote() {
@@ -1800,7 +1961,8 @@ function renderTopicVote() {
 
   const proposals = sortedTopicProposals();
   const selected = selectedProposalId();
-  const leader = proposals[0];
+  const promotedThread = boardState?.promotedThread || null;
+  const leader = boardLeaderProposal();
   const countdown = voteCountdownParts();
   const totalVotes = proposals.reduce((sum, proposal) => sum + proposalVoteTotal(proposal), 0);
   const leaderVotes = leader ? proposalVoteTotal(leader) : 0;
@@ -1817,18 +1979,36 @@ function renderTopicVote() {
   }
 
   if (leaderCard) {
-    if (!leader) {
+    if (!leader && !promotedThread) {
       leaderCard.replaceChildren(create("p", "empty-state", "No proposed topics yet."));
     } else {
+      const leaderMode = promotedThread ? "promoted" : boardState?.featuredProposalId ? "featured" : "leader";
+      const leaderTitle = promotedThread?.title || leader?.title || "Tomorrow's debate";
+      const leaderQuestion = promotedThread?.question || leader?.question || "No promoted question yet.";
       const top = create("div", "topic-spotlight-top");
       const kickerBlock = create("div");
       kickerBlock.append(
-        create("p", "topic-spotlight-kicker", "Tomorrow's vote leader"),
-        create("p", "topic-spotlight-title", leader.title)
+        create(
+          "p",
+          "topic-spotlight-kicker",
+          leaderMode === "promoted"
+            ? "Tomorrow's promoted thread"
+            : leaderMode === "featured"
+              ? "Featured vote question"
+              : "Tomorrow's vote leader"
+        ),
+        create("p", "topic-spotlight-title", leaderTitle)
       );
-      top.append(kickerBlock, create("span", "topic-spotlight-chip", "AI agents queued"));
+      top.append(
+        kickerBlock,
+        create(
+          "span",
+          "topic-spotlight-chip",
+          leaderMode === "promoted" ? "Board override" : "AI agents queued"
+        )
+      );
 
-      const question = create("h3", "topic-spotlight-question", leader.question);
+      const question = create("h3", "topic-spotlight-question", leaderQuestion);
 
       const countdownGrid = create("div", "topic-spotlight-countdown");
       [
@@ -1863,8 +2043,18 @@ function renderTopicVote() {
 
       const footer = create("div", "topic-spotlight-footer");
       footer.append(
-        create("span", "", `${leaderVotes} votes - leading`),
-        create("span", "", `${proposals.length} proposals total`)
+        create(
+          "span",
+          "",
+          promotedThread
+            ? boardState?.note || "Queued as the next public thread."
+            : `${leaderVotes} votes - leading`
+        ),
+        create(
+          "span",
+          "",
+          promotedThread ? "Promoted for tomorrow" : `${proposals.length} proposals total`
+        )
       );
 
       leaderCard.replaceChildren(top, question, countdownGrid, queue, progress, footer);
@@ -2157,23 +2347,35 @@ function renderSubmittedSources() {
       link.href = source.url;
       link.target = "_blank";
       link.rel = "noreferrer";
-      const meta = create("p", "", `Submitted ${source.submittedAt}. Status: queued for source extraction.`);
+      const statusLabel =
+        source.status === "held"
+          ? "held for moderation"
+          : source.status === "approved"
+            ? "approved for processing"
+            : "queued for source extraction";
+      const meta = create("p", "", `Submitted ${source.submittedAt}. Status: ${statusLabel}.`);
       const note = source.note ? create("p", "", source.note) : create("p", "", "No note added.");
+      const moderation = source.moderationReason
+        ? create("p", "form-status", `Moderator note: ${source.moderationReason}`)
+        : null;
       const remove = create("button", "secondary-button", "Remove");
       remove.type = "button";
       remove.addEventListener("click", async () => {
         try {
-          await fetch(`/api/submitted-sources/${encodeURIComponent(source.id)}`, {
-            method: "DELETE"
-          });
+          await fetchJson(`/api/submitted-sources/${encodeURIComponent(source.id)}`, { method: "DELETE" }, { admin: adminEnabled() });
         } catch {
           // Static-file fallback keeps local removal useful without the Python API.
         }
         submittedSources = submittedSources.filter((candidate) => candidate.id !== source.id);
         saveJson(storageKeys.submittedSources, submittedSources);
+        if (adminEnabled()) {
+          hydrateAdminState();
+        }
         renderSubmittedSources();
       });
-      card.append(top, link, meta, note, remove);
+      card.append(top, link, meta, note);
+      if (moderation) card.append(moderation);
+      card.append(remove);
       return card;
     })
   );
@@ -2220,28 +2422,35 @@ function setupSourceSubmission() {
 }
 
 async function queueSubmittedSource(nextSource, status) {
+  if (!apiBackedState) {
+    submittedSources = [nextSource, ...submittedSources];
+    saveJson(storageKeys.submittedSources, submittedSources);
+    status.textContent = "Queued locally. Once the shared API is live here, source submissions will persist for everyone.";
+    renderSubmittedSources();
+    return;
+  }
+
   try {
-    const response = await fetch("/api/submitted-sources", {
+    const payload = await fetchJson("/api/submitted-sources", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(nextSource)
     });
-    if (!response.ok) throw new Error("Source API unavailable");
-    const payload = await response.json();
     submittedSources = payload.sources || [payload.source, ...submittedSources].filter(Boolean);
+    status.textContent =
+      payload.submission?.message || "Source queued for processing.";
+    if (adminEnabled()) await hydrateAdminState();
   } catch {
     submittedSources = [nextSource, ...submittedSources];
+    status.textContent = "Queued locally because the shared source API is unavailable right now.";
   }
   saveJson(storageKeys.submittedSources, submittedSources);
-  status.textContent = "Queued. The future processor will extract claims, sources, and agent updates from this link.";
   renderSubmittedSources();
 }
 
 async function hydrateSubmittedSources() {
   try {
-    const response = await fetch("/api/submitted-sources");
-    if (!response.ok) return;
-    const payload = await response.json();
+    const payload = await fetchJson("/api/submitted-sources");
     if (!Array.isArray(payload.sources)) return;
     submittedSources = payload.sources;
     saveJson(storageKeys.submittedSources, submittedSources);
@@ -2275,11 +2484,13 @@ function setupTopicVote() {
     };
 
     try {
-      await submitTopicProposal(nextProposal);
+      const submission = await submitTopicProposal(nextProposal);
       form.reset();
-      status.textContent = apiBackedState
-        ? `${nextProposal.title} is live on the shared vote board and carries your vote.`
-        : `${nextProposal.title} is on the board and already has your support.`;
+      status.textContent =
+        submission?.message ||
+        (apiBackedState
+          ? `${nextProposal.title} is live on the shared vote board and carries your vote.`
+          : `${nextProposal.title} is on the board and already has your support.`);
     } catch (error) {
       status.textContent = error instanceof Error ? error.message : "Could not submit that topic yet.";
     }
@@ -2395,6 +2606,182 @@ function setupAgentRoom() {
   });
 }
 
+function adminQueueItem(kind, item) {
+  const card = create("article", "admin-queue-card");
+  const top = create("div", "admin-queue-top");
+  top.append(
+    create("strong", "", kind === "proposal" ? item.title : kind === "comment" ? item.author : item.title || "Submitted source"),
+    create("span", "mini-chip", kind)
+  );
+  card.append(top);
+
+  if (kind === "proposal") {
+    card.append(create("p", "admin-queue-question", item.question));
+  } else if (kind === "comment") {
+    card.append(create("p", "admin-queue-question", item.body));
+  } else {
+    const link = create("a", "admin-queue-link", item.url);
+    link.href = item.url;
+    link.target = "_blank";
+    link.rel = "noreferrer";
+    card.append(link);
+    if (item.note) card.append(create("p", "admin-queue-question", item.note));
+  }
+
+  if (item.moderationReason) {
+    card.append(create("p", "admin-queue-reason", `Held: ${item.moderationReason}`));
+  }
+
+  const actions = create("div", "admin-queue-actions");
+  const approve = create("button", "secondary-button", "Approve");
+  approve.type = "button";
+  approve.addEventListener("click", () => runAdminReview(kind, item.id, "approve"));
+  const reject = create("button", "secondary-button", "Reject");
+  reject.type = "button";
+  reject.addEventListener("click", () => runAdminReview(kind, item.id, "reject"));
+  actions.append(approve, reject);
+  card.append(actions);
+  return card;
+}
+
+function renderAdminPanel() {
+  const panel = document.querySelector("#admin-panel");
+  const tokenInput = document.querySelector("#admin-token");
+  const status = document.querySelector("#admin-status");
+  const featureSelect = document.querySelector("#admin-feature-select");
+  const queue = document.querySelector("#admin-queue");
+  if (!panel || !tokenInput || !status || !featureSelect || !queue) return;
+
+  panel.hidden = !adminEnabled();
+  tokenInput.value = adminToken;
+  if (!adminEnabled()) {
+    queue.replaceChildren();
+    status.textContent = "";
+    featureSelect.replaceChildren();
+    return;
+  }
+
+  const proposals = Array.isArray(adminState?.proposals)
+    ? adminState.proposals.filter((proposal) => proposal.status === "approved")
+    : [];
+  featureSelect.replaceChildren(
+    ...proposals.map((proposal) => {
+      const option = document.createElement("option");
+      option.value = proposal.id;
+      option.textContent = proposal.question;
+      if (boardState?.featuredProposalId === proposal.id) option.selected = true;
+      return option;
+    })
+  );
+
+  if (adminState?.error) {
+    status.textContent = adminState.error;
+  } else if (!status.textContent) {
+    status.textContent = adminToken
+      ? "Admin tools are live for this browser."
+      : "Local admin mode is active on this host.";
+  }
+
+  const queueCards = [];
+  const moderationQueue = adminState?.moderationQueue || { proposals: [], comments: [], sources: [] };
+  moderationQueue.proposals.forEach((proposal) => queueCards.push(adminQueueItem("proposal", proposal)));
+  moderationQueue.comments.forEach((comment) => queueCards.push(adminQueueItem("comment", comment)));
+  moderationQueue.sources.forEach((source) => queueCards.push(adminQueueItem("source", source)));
+  if (!queueCards.length) {
+    queue.replaceChildren(create("p", "empty-state", "No held items waiting for moderation."));
+    return;
+  }
+  queue.replaceChildren(...queueCards);
+}
+
+async function runAdminReview(kind, id, action) {
+  const status = document.querySelector("#admin-status");
+  const note = document.querySelector("#admin-note")?.value.trim() || "";
+  if (status) status.textContent = "Saving moderation decision...";
+  try {
+    adminState = await fetchJson(
+      "/api/admin/review",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kind, id, action, note, adminToken })
+      },
+      { admin: true }
+    );
+    await hydrateServerState();
+    renderAdminPanel();
+    if (status) status.textContent = `${kind} ${action}d.`;
+  } catch (error) {
+    if (status) status.textContent = error instanceof Error ? error.message : "Moderation update failed.";
+  }
+}
+
+function setupAdminControls() {
+  const save = document.querySelector("#admin-save-token");
+  const refresh = document.querySelector("#admin-refresh-topics");
+  const feature = document.querySelector("#admin-feature-proposal");
+  const promote = document.querySelector("#admin-promote-thread");
+  const clearPromoted = document.querySelector("#admin-clear-promoted");
+  const tokenInput = document.querySelector("#admin-token");
+  const featureSelect = document.querySelector("#admin-feature-select");
+  const status = document.querySelector("#admin-status");
+
+  async function runAdminAction(label, path, body = {}) {
+    if (status) status.textContent = `${label}...`;
+    try {
+      const payload = await fetchJson(
+        path,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...body, adminToken })
+        },
+        { admin: true }
+      );
+      if (payload.admin) {
+        adminState = payload.admin;
+      } else {
+        adminState = payload;
+      }
+      await hydrateServerState();
+      renderAdminPanel();
+      if (status) status.textContent = `${label} complete.`;
+    } catch (error) {
+      if (status) status.textContent = error instanceof Error ? error.message : `${label} failed.`;
+    }
+  }
+
+  save?.addEventListener("click", async () => {
+    setStoredAdminToken(tokenInput?.value || "");
+    if (status) status.textContent = adminToken ? "Admin token saved. Loading controls..." : "Admin token cleared.";
+    await hydrateAdminState();
+  });
+
+  refresh?.addEventListener("click", () => runAdminAction("Refreshing tomorrow's slate", "/api/admin/refresh-topics"));
+
+  feature?.addEventListener("click", () => {
+    const proposalId = featureSelect?.value;
+    if (!proposalId) {
+      if (status) status.textContent = "Choose a proposal to feature first.";
+      return;
+    }
+    const note = document.querySelector("#admin-note")?.value.trim() || "";
+    runAdminAction("Featuring proposal", "/api/admin/feature-proposal", { proposalId, note });
+  });
+
+  promote?.addEventListener("click", () => {
+    const proposalId = featureSelect?.value;
+    if (!proposalId) {
+      if (status) status.textContent = "Choose a proposal to promote first.";
+      return;
+    }
+    const note = document.querySelector("#admin-note")?.value.trim() || "";
+    runAdminAction("Promoting tomorrow's thread", "/api/admin/promote-thread", { proposalId, note });
+  });
+
+  clearPromoted?.addEventListener("click", () => runAdminAction("Clearing promoted thread", "/api/admin/clear-promoted"));
+}
+
 function setupTabs() {
   const shell = document.querySelector(".shell");
   const tabButtons = Array.from(document.querySelectorAll(".tab-button"));
@@ -2407,6 +2794,7 @@ function setupTabs() {
     document.body.dataset.activeTab = tab;
     tabButtons.forEach((candidate) => candidate.classList.toggle("active", candidate.dataset.tab === tab));
     tabPanels.forEach((candidate) => candidate.classList.toggle("active", candidate.id === tab));
+    renderHeader();
     if (updateHash && window.location.hash !== `#${tab}`) {
       history.replaceState(null, "", `#${tab}`);
     }
@@ -2472,15 +2860,17 @@ function init() {
   setupSearch();
   setupSourceSubmission();
   setupTopicVote();
+  setupAdminControls();
   setupThreadStudio();
   setupAgentRoom();
+  renderAdminPanel();
   drawerClose.addEventListener("click", closeDrawer);
   drawerScrim.addEventListener("click", closeDrawer);
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") closeDrawer();
   });
   window.setInterval(renderTopicVote, 60000);
-  hydrateServerState();
+  refreshSharedState();
 }
 
 init();

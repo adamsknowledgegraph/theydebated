@@ -1157,6 +1157,114 @@ a {
   font-weight: 760;
 }
 
+.admin-panel {
+  overflow: hidden;
+  background: rgba(255, 255, 251, 0.92);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow: var(--tight-shadow);
+}
+
+.admin-panel summary {
+  padding: 14px 18px;
+  color: var(--ink);
+  font-size: 0.86rem;
+  font-weight: 860;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  list-style: none;
+  cursor: pointer;
+}
+
+.admin-panel summary::-webkit-details-marker {
+  display: none;
+}
+
+.admin-panel-body {
+  display: grid;
+  gap: 12px;
+  padding: 0 18px 18px;
+}
+
+.admin-panel-body label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.admin-panel-body input,
+.admin-panel-body textarea,
+.admin-panel-body select {
+  width: 100%;
+  min-height: 42px;
+  padding: 10px 12px;
+  color: var(--ink);
+  background: var(--paper-strong);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.admin-actions,
+.admin-queue-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.admin-queue {
+  display: grid;
+  gap: 10px;
+}
+
+.admin-queue-card {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  background: rgba(255, 255, 251, 0.82);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.admin-queue-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.admin-queue-top strong,
+.admin-queue-question,
+.admin-queue-link,
+.admin-queue-reason {
+  margin: 0;
+}
+
+.admin-queue-top strong {
+  color: var(--ink);
+  font-size: 0.92rem;
+  line-height: 1.3;
+}
+
+.admin-queue-question,
+.admin-queue-link,
+.admin-queue-reason {
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.admin-queue-link {
+  word-break: break-word;
+}
+
+.admin-queue-reason {
+  color: var(--red);
+  font-size: 0.86rem;
+}
+
 .topic-form label {
   display: grid;
   gap: 6px;
@@ -2016,6 +2124,10 @@ a {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+}
+
+.reply-composer .form-status {
+  margin: 0;
 }
 
 .primary-button,
