@@ -1639,42 +1639,20 @@ function renderAgentRoom() {
 function renderTopicVote() {
   const count = document.querySelector("#topic-count");
   const close = document.querySelector("#topic-close");
+  const closeDetail = document.querySelector("#topic-close-detail");
   const footnote = document.querySelector("#topic-vote-footnote");
-  const leader = document.querySelector("#topic-leader-card");
   const grid = document.querySelector("#topic-proposal-grid");
-  if (!leader || !grid) return;
+  if (!grid) return;
 
   const proposals = sortedTopicProposals();
-  const leading = proposals[0];
-  const runnerUp = proposals[1];
   const selected = selectedProposalId();
   if (count) count.textContent = String(proposals.length);
-  if (close) close.textContent = `${voteCloseLabel()} / ${voteCountdownLabel()}`;
+  if (close) close.textContent = voteCountdownLabel();
+  if (closeDetail) closeDetail.textContent = `closes ${voteCloseLabel()}`;
   if (footnote) {
     footnote.textContent = selected
-      ? "Your vote is saved in this browser. You can move it to a different topic at any time before the deadline."
-      : "One vote per person for now, stored in this browser. Tomorrow's winner becomes the next public AI-agent debate.";
-  }
-
-  if (leading) {
-    const leaderMeta = create(
-      "p",
-      "topic-leader-meta",
-      `${proposalVoteTotal(leading)} votes so far. ${
-        runnerUp ? `Leading by ${proposalVoteTotal(leading) - proposalVoteTotal(runnerUp)}.` : "Only proposal on the board."
-      } Same AI agents tomorrow.`
-    );
-    const schedule = create("p", "topic-leader-schedule", `If it holds, this opens as tomorrow's public AI-agent debate after the vote closes.`);
-    leader.replaceChildren(
-      create("h3", "", leading.title),
-      create("p", "topic-proposal-question", leading.question),
-      create("p", "topic-proposal-why", leading.whyNow),
-      leaderMeta,
-      schedule,
-      create("p", "topic-proposal-evidence", `Evidence lane: ${leading.evidenceLane}`)
-    );
-  } else {
-    leader.replaceChildren(create("p", "empty-state", "No topic proposals yet."));
+      ? "Demo totals are pre-seeded. Your vote is saved in this browser and updates the count locally."
+      : "Demo totals are pre-seeded so the board does not start at zero. Your vote is saved in this browser.";
   }
 
   grid.replaceChildren(
@@ -1684,15 +1662,12 @@ function renderTopicVote() {
       top.append(create("strong", "", proposal.title), create("span", "topic-vote-total", `${proposalVoteTotal(proposal)} votes`));
 
       const question = create("p", "topic-proposal-question", proposal.question);
-      const why = create("p", "topic-proposal-why", proposal.whyNow);
-      const evidence = create("p", "topic-proposal-evidence", `Evidence lane: ${proposal.evidenceLane}`);
 
       const voteRow = create("div", "topic-vote-row");
-      const meta = create(
-        "p",
-        "topic-card-meta",
-        `${index === 0 ? "Currently leading. " : ""}${selected === proposal.id ? "This is your current vote. " : ""}If this wins, the same AI agents debate it tomorrow.`
-      );
+      const tags = create("div", "topic-card-tags");
+      if (index === 0) tags.append(create("span", "mini-chip", "Leading"));
+      if (selected === proposal.id) tags.append(create("span", "mini-chip", "Your vote"));
+
       const button = create(
         "button",
         selected === proposal.id ? "primary-button" : "secondary-button",
@@ -1703,9 +1678,9 @@ function renderTopicVote() {
         setSelectedProposal(selected === proposal.id ? null : proposal.id);
         renderTopicVote();
       });
-      voteRow.append(meta, button);
+      voteRow.append(tags, button);
 
-      card.append(top, question, why, evidence, voteRow);
+      card.append(top, question, voteRow);
       return card;
     })
   );
@@ -2062,21 +2037,17 @@ function setupTopicVote() {
     event.preventDefault();
     const titleInput = document.querySelector("#topic-title");
     const questionInput = document.querySelector("#topic-question");
-    const whyNowInput = document.querySelector("#topic-why-now");
-    const evidenceLaneInput = document.querySelector("#topic-evidence-lane");
     const status = document.querySelector("#topic-form-status");
 
     const title = titleInput.value.trim();
     const question = questionInput.value.trim();
-    const whyNow = whyNowInput.value.trim();
-    const evidenceLane = evidenceLaneInput.value.trim();
 
     const nextProposal = {
       id: `${slugify(title)}-${Date.now()}`,
       title,
       question,
-      whyNow,
-      evidenceLane,
+      whyNow: "Suggested by the community for the next vote cycle.",
+      evidenceLane: "Open source reporting and primary records.",
       baseVotes: 1,
       createdAt: todayIso()
     };
@@ -2200,12 +2171,15 @@ function setupAgentRoom() {
 }
 
 function setupTabs() {
+  const shell = document.querySelector(".shell");
   const tabButtons = Array.from(document.querySelectorAll(".tab-button"));
   const tabPanels = Array.from(document.querySelectorAll(".tab-panel"));
   const tabIds = new Set(tabPanels.map((panel) => panel.id));
 
   function activateTab(tab, updateHash = true) {
     if (!tabIds.has(tab)) return;
+    if (shell) shell.dataset.activeTab = tab;
+    document.body.dataset.activeTab = tab;
     tabButtons.forEach((candidate) => candidate.classList.toggle("active", candidate.dataset.tab === tab));
     tabPanels.forEach((candidate) => candidate.classList.toggle("active", candidate.id === tab));
     if (updateHash && window.location.hash !== `#${tab}`) {
