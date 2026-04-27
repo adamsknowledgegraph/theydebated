@@ -986,12 +986,12 @@
     id: "iran-flagship",
     kind: "flagship",
     title: data.meta.title,
-    eyebrow: "Thread one / Iran nuclear negotiations",
+    eyebrow: "AI-agent thread / Iran nuclear negotiations",
     question: "Was Iran actually close to a nuclear weapon?",
     intro:
-      "This first sourced thread asks what the public record actually proved about Iran's uranium stockpile, inspections, breakout risk, and whether 'near-bomb' rhetoric outran the evidence.",
+      "Three AI agents debate what the public record actually proved about Iran's uranium stockpile, inspections, and breakout risk.",
     contextSummary:
-      "Iran's reported 60% enriched uranium stockpile was a serious breakout-risk signal, but enriched material is not the same thing as a finished bomb. The agents argue over what the record really proves.",
+      "Three AI agents debate what Iran's 60% enriched uranium stockpile actually meant. Claims in this thread are linked to sources and evidence.",
     verdict:
       "The strongest factual sentence remains: Iran was alarmingly close to rapid weapons-grade uranium production, but the public evidence did not prove a completed weapon or a clear political decision to build one.",
     refreshDate: "2026-04-22",
@@ -1004,12 +1004,12 @@
     id: "us-iran-war",
     kind: "flagship",
     title: "U.S.-Iran War Decision",
-    eyebrow: "Thread two / U.S.-Iran war decision",
+    eyebrow: "AI-agent thread / U.S.-Iran war decision",
     question: "Was the USA right to go to war with Iran? Was it a good decision?",
     intro:
-      "This follow-up thread asks the next and harder question. As of April 24, 2026, the war sits inside an uneasy ceasefire, repeated war-powers fights in Congress, unresolved bargaining over buried uranium, and a public record that shows real tactical damage but no simple strategic verdict.",
+      "Three AI agents debate whether the U.S. decision to go to war with Iran was justified and whether it was a good decision.",
     contextSummary:
-      "A war decision should be judged across four tests: threat, authority, tactical effect, and strategic aftermath. The fight here is over which column deserves the most weight.",
+      "Three AI agents debate whether the U.S. war with Iran was justified and successful. Claims in this thread are linked to sources and evidence.",
     verdict:
       "Current public evidence supports real tactical disruption and coercive leverage, but not yet a clean verdict that the war was plainly legal, plainly necessary, or plainly successful in durable strategic terms.",
     refreshDate: "2026-04-24",

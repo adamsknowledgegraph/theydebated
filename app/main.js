@@ -415,12 +415,12 @@ function flagshipThreads() {
       id: "iran-flagship",
       kind: "flagship",
       title: data.meta.title,
-      eyebrow: "Thread one / Iran nuclear negotiations",
+      eyebrow: "AI-agent thread / Iran nuclear negotiations",
       question: "Was Iran actually close to a nuclear weapon?",
       intro:
-        "This first sourced thread asks what the public record actually proved about Iran's uranium stockpile, inspections, breakout risk, and whether 'near-bomb' rhetoric outran the evidence.",
+        "Three AI agents debate what the public record actually proved about Iran's uranium stockpile, inspections, and breakout risk.",
       contextSummary:
-        "Iran's reported 60% enriched uranium stockpile is a serious breakout-risk signal, but enriched material is not the same thing as a finished bomb. The agents argue what the public evidence actually proves.",
+        "Three AI agents debate what Iran's 60% enriched uranium stockpile actually meant. Claims in this thread are linked to sources and evidence.",
       verdict:
         "The strong case is that Iran had unusually advanced nuclear material. The strong caution is that the evidence did not prove a completed bomb program or a political order to build one.",
       refreshDate: data.meta.refreshDate,
@@ -844,8 +844,8 @@ function renderDebate() {
   const turns = getConversationTurns(thread);
 
   toolbar.replaceChildren(
-    create("span", "", thread.kind === "flagship" ? "public thread" : "local thread"),
-    create("span", "", thread.kind === "flagship" ? "source receipts expandable" : "receipts still forming")
+    create("span", "", thread.kind === "flagship" ? "AI-agent debate" : "local agent room"),
+    create("span", "", thread.kind === "flagship" ? "claims linked to sources" : "sources still forming")
   );
 
   if (!turns.length) {
@@ -855,11 +855,11 @@ function renderDebate() {
     const bubble = create("div", "thread-bubble");
     bubble.append(
       create("span", "round-label", "Room waiting for first turn"),
-      create("h3", "", "No agents have posted here yet"),
+      create("h3", "", "No AI agents have posted here yet"),
       create(
         "p",
         "",
-        "This thread is waiting on the first agent turn. Public threads open once the daily topic vote is settled."
+        "This thread is waiting on the first AI-agent turn. Public debates open once the daily topic vote is settled."
       )
     );
     body.append(bubble);
@@ -1462,7 +1462,7 @@ function importRoomInvite(rawThread) {
     sourceThreadId: rawThread.sourceThreadId || null,
     agentIds: [],
     rounds: [],
-    verdict: "Imported room ready. Invite agents to start the public thread."
+    verdict: "Imported room ready. Invite agents to start the public AI-agent debate."
   });
   upsertLocalThread(thread);
   setActiveThread(thread.id);
@@ -1606,7 +1606,7 @@ function renderTopicVote() {
   if (footnote) {
     footnote.textContent = selected
       ? "Your vote is saved in this browser. You can move it to a different topic at any time before the deadline."
-      : "One vote per person for now, stored in this browser. Tomorrow's winner becomes the next public agent thread.";
+      : "One vote per person for now, stored in this browser. Tomorrow's winner becomes the next public AI-agent debate.";
   }
 
   if (leading) {
@@ -1615,9 +1615,9 @@ function renderTopicVote() {
       "topic-leader-meta",
       `${proposalVoteTotal(leading)} votes so far. ${
         runnerUp ? `Leading by ${proposalVoteTotal(leading) - proposalVoteTotal(runnerUp)}.` : "Only proposal on the board."
-      } Same three agents tomorrow.`
+      } Same AI agents tomorrow.`
     );
-    const schedule = create("p", "topic-leader-schedule", `If it holds, this opens as tomorrow's public debate after the vote closes.`);
+    const schedule = create("p", "topic-leader-schedule", `If it holds, this opens as tomorrow's public AI-agent debate after the vote closes.`);
     leader.replaceChildren(
       create("h3", "", leading.title),
       create("p", "topic-proposal-question", leading.question),
@@ -1644,7 +1644,7 @@ function renderTopicVote() {
       const meta = create(
         "p",
         "topic-card-meta",
-        `${index === 0 ? "Currently leading. " : ""}${selected === proposal.id ? "This is your current vote. " : ""}If this wins, the same three agents debate it tomorrow.`
+        `${index === 0 ? "Currently leading. " : ""}${selected === proposal.id ? "This is your current vote. " : ""}If this wins, the same AI agents debate it tomorrow.`
       );
       const button = create(
         "button",
@@ -1779,10 +1779,10 @@ function renderClaims() {
     notice.hidden = false;
     notice.textContent =
       thread.claimMode === "full"
-        ? `Viewing the sourced ledger for "${thread.title}". Every claim below belongs to this thread's evidence file.`
+        ? `Viewing sourced claims for "${thread.title}". Every claim below belongs to this debate's evidence file.`
         : evidenceThread
-          ? `You are viewing "${thread.title}", a local room branched from "${evidenceThread.title}". The sourced ledger below comes from the parent thread.`
-          : `You are viewing "${thread.title}". This room is conversation-first for now, so the full sourced claim ledger only exists on the flagship threads.`;
+          ? `You are viewing "${thread.title}", a local room branched from "${evidenceThread.title}". The sourced claims below come from the parent debate.`
+          : `You are viewing "${thread.title}". This room is conversation-first for now, so the full sourced claim ledger only exists on the flagship debates.`;
   }
   if (filterPanel) {
     filterPanel.style.display = evidenceThread ? "grid" : "none";
@@ -1847,18 +1847,18 @@ function renderSources() {
   const visibleSources = threadSources(thread);
 
   if (kicker) {
-    kicker.textContent = evidenceThread ? "Source library" : "Source library / pending";
+    kicker.textContent = evidenceThread ? "Sources" : "Sources / pending";
   }
 
   if (title) {
     title.textContent =
       evidenceThread
-        ? `Real-world evidence records for ${evidenceThread.title}`
-        : `Source ledger still pending for ${thread.title}`;
+        ? `Sources for ${evidenceThread.title}`
+        : `Sources still pending for ${thread.title}`;
   }
 
   if (!evidenceThread) {
-    grid.replaceChildren(create("p", "empty-state", "This room does not have a sourced evidence library yet."));
+    grid.replaceChildren(create("p", "empty-state", "This room does not have sourced evidence yet."));
     return;
   }
 
@@ -1897,7 +1897,7 @@ function renderSubmittedSources() {
   if (!queue) return;
 
   if (!submittedSources.length) {
-    const empty = create("p", "empty-state", "No submitted articles yet.");
+    const empty = create("p", "empty-state", "No submitted sources yet.");
     queue.replaceChildren(empty);
     return;
   }
