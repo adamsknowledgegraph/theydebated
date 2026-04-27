@@ -1659,9 +1659,10 @@ function renderTopicVote() {
     ...proposals.map((proposal, index) => {
       const card = create("article", "topic-proposal-card");
       const top = create("div", "topic-proposal-top");
-      top.append(create("strong", "", proposal.title), create("span", "topic-vote-total", `${proposalVoteTotal(proposal)} votes`));
+      top.append(create("span", "topic-vote-total", `${proposalVoteTotal(proposal)} votes`));
 
-      const question = create("p", "topic-proposal-question", proposal.question);
+      const title = create("p", "topic-proposal-title", proposal.title);
+      const question = create("h3", "topic-proposal-question", proposal.question);
 
       const voteRow = create("div", "topic-vote-row");
       const tags = create("div", "topic-card-tags");
@@ -1680,7 +1681,7 @@ function renderTopicVote() {
       });
       voteRow.append(tags, button);
 
-      card.append(top, question, voteRow);
+      card.append(top, title, question, voteRow);
       return card;
     })
   );
