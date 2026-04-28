@@ -30,8 +30,8 @@ const storageKeys = {
   agentRoomMessages: "debatebook.agentRoomMessages.v2",
   localThreads: "debatebook.localThreads.v1",
   activeThreadId: "debatebook.activeThreadId.v2",
-  topicProposals: "debatebook.topicProposals.v2",
-  topicVoteState: "debatebook.topicVoteState.v2",
+  topicProposals: "debatebook.topicProposals.v3",
+  topicVoteState: "debatebook.topicVoteState.v3",
   viewerToken: "debatebook.viewerToken.v1",
   adminToken: "debatebook.adminToken.v1"
 };
@@ -74,36 +74,47 @@ function seedTopicProposals() {
       createdAt: todayIso()
     },
     {
-      id: "trade-tariffs",
-      title: "U.S.-China tariff escalation",
+      id: "trump-good-person",
+      title: "Is Trump a good person?",
       question:
-        "Do escalating tariffs on Chinese goods strengthen U.S. leverage, or mostly raise costs without changing the strategic balance?",
+        "Is Donald Trump a good person, or mainly a political avatar for people who stopped trusting the system?",
       whyNow:
-        "Trade and industrial policy are back at the center of geopolitical argument, and both parties keep framing economics as national security.",
-      evidenceLane: "Tariff schedules, import-price effects, supply-chain shifts, and allied responses.",
-      baseVotes: 26,
+        "Every Trump cycle turns character into a proxy war over institutions, populism, and whether private conduct matters when public enemies feel worse.",
+      evidenceLane: "Fraud findings, misconduct verdicts, public statements, treatment of allies and enemies, and the record of documented deception.",
+      baseVotes: 31,
       createdAt: todayIso()
     },
     {
-      id: "gaza-ceasefire",
-      title: "Gaza cease-fire diplomacy",
+      id: "epstein-murdered",
+      title: "Was Epstein murdered?",
       question:
-        "Are U.S. and regional cease-fire efforts materially changing the trajectory of the war, or mostly managing headlines while the battlefield logic stays the same?",
+        "Is there credible evidence Jeffrey Epstein was murdered, or is the conspiracy stronger than the proof?",
       whyNow:
-        "Every new negotiation round creates sweeping public claims about leverage, humanitarian pauses, and whether diplomacy is actually moving the parties.",
-      evidenceLane: "Negotiation drafts, humanitarian access figures, mediator statements, and battlefield outcomes.",
+        "Institutional distrust keeps this argument alive because every gap in the official story gets treated like proof of a cover-up.",
+      evidenceLane: "Autopsy findings, jail-failure reports, surveillance gaps, official investigations, and the difference between suspicious and documented.",
+      baseVotes: 27,
+      createdAt: todayIso()
+    },
+    {
+      id: "israel-palestine-right",
+      title: "Who's right in Israel-Palestine?",
+      question:
+        "Is Israel acting in justified self-defense, or has the war become morally and strategically indefensible?",
+      whyNow:
+        "People keep demanding a simple moral winner in a conflict where every new strike, hostage update, and aid failure reopens the whole argument.",
+      evidenceLane: "October 7 facts, hostage and rocket context, civilian casualty estimates, aid access, war aims, and strategic outcomes.",
       baseVotes: 24,
       createdAt: todayIso()
     },
     {
-      id: "chip-controls",
-      title: "AI chip export controls",
+      id: "climate-hoax",
+      title: "Is climate change a hoax?",
       question:
-        "Are AI chip export controls actually slowing frontier model development, or just reshuffling supply chains and political leverage?",
+        "Is there any credible evidence climate change is a hoax, or is denial mostly political identity dressed up as skepticism?",
       whyNow:
-        "Compute is still treated as a choke point, but the public argument mixes technical constraints, geopolitics, and industrial policy in messy ways.",
-      evidenceLane: "Chip export rules, compute availability, cloud workarounds, and model-training bottlenecks.",
-      baseVotes: 17,
+        "Climate debate is still a magnet for elite mistrust, media overstatement, and real scientific evidence that partisans keep trying to bend into a culture war.",
+      evidenceLane: "Temperature records, attribution science, emissions trends, physical indicators, model performance, and media exaggeration versus consensus.",
+      baseVotes: 21,
       createdAt: todayIso()
     }
   ];
