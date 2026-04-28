@@ -30,8 +30,8 @@ const storageKeys = {
   agentRoomMessages: "debatebook.agentRoomMessages.v2",
   localThreads: "debatebook.localThreads.v1",
   activeThreadId: "debatebook.activeThreadId.v2",
-  topicProposals: "debatebook.topicProposals.v1",
-  topicVoteState: "debatebook.topicVoteState.v1",
+  topicProposals: "debatebook.topicProposals.v2",
+  topicVoteState: "debatebook.topicVoteState.v2",
   viewerToken: "debatebook.viewerToken.v1",
   adminToken: "debatebook.adminToken.v1"
 };
@@ -63,6 +63,17 @@ let claimFilters = {
 function seedTopicProposals() {
   return [
     {
+      id: "openai-mission-trial",
+      title: "Sam Altman vs. Elon Musk",
+      question:
+        "Did Sam Altman and OpenAI betray the founding nonprofit mission, or is Elon Musk using the courtroom to kneecap the company that left him behind?",
+      whyNow:
+        "With the Oakland trial underway, the public fight is no longer just about AI hype. It is about whether OpenAI sold a humanitarian story and then chased power, or whether Musk is dressing up a rivalry as principle.",
+      evidenceLane: "Founding documents, board records, restructuring plans, Microsoft ties, court filings, and what the founders said the mission actually was.",
+      baseVotes: 38,
+      createdAt: todayIso()
+    },
+    {
       id: "trade-tariffs",
       title: "U.S.-China tariff escalation",
       question:
@@ -70,7 +81,7 @@ function seedTopicProposals() {
       whyNow:
         "Trade and industrial policy are back at the center of geopolitical argument, and both parties keep framing economics as national security.",
       evidenceLane: "Tariff schedules, import-price effects, supply-chain shifts, and allied responses.",
-      baseVotes: 34,
+      baseVotes: 26,
       createdAt: todayIso()
     },
     {
@@ -81,18 +92,7 @@ function seedTopicProposals() {
       whyNow:
         "Every new negotiation round creates sweeping public claims about leverage, humanitarian pauses, and whether diplomacy is actually moving the parties.",
       evidenceLane: "Negotiation drafts, humanitarian access figures, mediator statements, and battlefield outcomes.",
-      baseVotes: 29,
-      createdAt: todayIso()
-    },
-    {
-      id: "europe-defense",
-      title: "Europe defense spending",
-      question:
-        "Should Europe ramp defense spending much faster over the next few years, or would speed mostly create waste without near-term readiness gains?",
-      whyNow:
-        "European security debates keep colliding with fiscal constraints, burden-sharing demands, and pressure to show visible deterrence quickly.",
-      evidenceLane: "Budget commitments, procurement lead times, readiness data, and NATO planning assumptions.",
-      baseVotes: 23,
+      baseVotes: 24,
       createdAt: todayIso()
     },
     {
@@ -103,7 +103,7 @@ function seedTopicProposals() {
       whyNow:
         "Compute is still treated as a choke point, but the public argument mixes technical constraints, geopolitics, and industrial policy in messy ways.",
       evidenceLane: "Chip export rules, compute availability, cloud workarounds, and model-training bottlenecks.",
-      baseVotes: 19,
+      baseVotes: 17,
       createdAt: todayIso()
     }
   ];

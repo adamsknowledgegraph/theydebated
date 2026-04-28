@@ -28,12 +28,21 @@ ALLOWED_ORIGINS = [
 
 SEED_TOPIC_PROPOSALS = [
     {
+        "slug": "openai-mission-trial",
+        "title": "Sam Altman vs. Elon Musk",
+        "question": "Did Sam Altman and OpenAI betray the founding nonprofit mission, or is Elon Musk using the courtroom to kneecap the company that left him behind?",
+        "why_now": "With the Oakland trial underway, the public fight is no longer just about AI hype. It is about whether OpenAI sold a humanitarian story and then chased power, or whether Musk is dressing up a rivalry as principle.",
+        "evidence_lane": "Founding documents, board records, restructuring plans, Microsoft ties, court filings, and what the founders said the mission actually was.",
+        "base_votes": 38,
+        "origin": "seed",
+    },
+    {
         "slug": "trade-tariffs",
         "title": "U.S.-China tariff escalation",
         "question": "Do escalating tariffs on Chinese goods strengthen U.S. leverage, or mostly raise costs without changing the strategic balance?",
         "why_now": "Trade and industrial policy are back at the center of geopolitical argument, and both parties keep framing economics as national security.",
         "evidence_lane": "Tariff schedules, import-price effects, supply-chain shifts, and allied responses.",
-        "base_votes": 34,
+        "base_votes": 26,
         "origin": "seed",
     },
     {
@@ -42,16 +51,7 @@ SEED_TOPIC_PROPOSALS = [
         "question": "Are U.S. and regional cease-fire efforts materially changing the trajectory of the war, or mostly managing headlines while the battlefield logic stays the same?",
         "why_now": "Every new negotiation round creates sweeping public claims about leverage, humanitarian pauses, and whether diplomacy is actually moving the parties.",
         "evidence_lane": "Negotiation drafts, humanitarian access figures, mediator statements, and battlefield outcomes.",
-        "base_votes": 29,
-        "origin": "seed",
-    },
-    {
-        "slug": "europe-defense",
-        "title": "Europe defense spending",
-        "question": "Should Europe ramp defense spending much faster over the next few years, or would speed mostly create waste without near-term readiness gains?",
-        "why_now": "European security debates keep colliding with fiscal constraints, burden-sharing demands, and pressure to show visible deterrence quickly.",
-        "evidence_lane": "Budget commitments, procurement lead times, readiness data, and NATO planning assumptions.",
-        "base_votes": 23,
+        "base_votes": 24,
         "origin": "seed",
     },
     {
@@ -60,7 +60,7 @@ SEED_TOPIC_PROPOSALS = [
         "question": "Are AI chip export controls actually slowing frontier model development, or just reshuffling supply chains and political leverage?",
         "why_now": "Compute is still treated as a choke point, but the public argument mixes technical constraints, geopolitics, and industrial policy in messy ways.",
         "evidence_lane": "Chip export rules, compute availability, cloud workarounds, and model-training bottlenecks.",
-        "base_votes": 19,
+        "base_votes": 17,
         "origin": "seed",
     },
 ]
@@ -75,6 +75,15 @@ NEWS_FEEDS = [
 ]
 
 ISSUE_BLUEPRINTS = [
+    {
+        "slug": "openai-mission-trial",
+        "title": "Sam Altman vs. Elon Musk",
+        "keywords": ["openai", "altman", "musk", "xai", "nonprofit", "sam altman", "elon musk"],
+        "question": "Did Sam Altman betray OpenAI's founding mission, or is Elon Musk weaponizing the mission story because the company became powerful without him?",
+        "why_now": "The courtroom fight puts governance, nonprofit mission, and founder rivalry into one very combustible public argument.",
+        "evidence_lane": "Founding documents, board records, restructuring plans, court filings, and who actually controlled the mission as OpenAI scaled.",
+        "priority": 11,
+    },
     {
         "slug": "gaza-ceasefire",
         "title": "Gaza cease-fire diplomacy",
