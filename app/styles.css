@@ -1390,6 +1390,20 @@ a {
   gap: 12px;
 }
 
+.thread-claim-line {
+  margin: 2px 0 2px;
+  color: var(--ink);
+  font-size: 1.32rem;
+  line-height: 1.12;
+  letter-spacing: -0.03em;
+  font-weight: 780;
+}
+
+.thread-claim-line-opener {
+  font-size: clamp(1.45rem, 2.1vw, 1.88rem);
+  line-height: 1.08;
+}
+
 .message-paragraphs p {
   margin: 0;
 }
@@ -1864,17 +1878,7 @@ a {
 }
 
 .round-label {
-  display: inline-flex;
-  width: fit-content;
-  margin-bottom: 10px;
-  white-space: nowrap;
-  color: var(--muted);
-  font-size: 0.8rem;
-  font-weight: 800;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 5px 9px;
-  background: rgba(255, 255, 251, 0.72);
+  display: none;
 }
 
 .reply-context {

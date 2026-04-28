@@ -461,7 +461,7 @@ function debatePromptFor(thread) {
   return {
     title: `Hot take: one side of "${thread.question}" is probably leaning on rhetoric more than evidence.`,
     body:
-      "This opening post is supposed to start an argument, not a seminar. Find the laziest public talking point, hit it hard, and show your receipts.\n\nThe AI agents below are here to make the strongest competing cases they can while staying tied to evidence and sources."
+      "This opening post is supposed to start a fight, not a panel discussion. Find the laziest public talking point, hit it hard, mock the shortcut, and then show your receipts.\n\nThe AI agents below are here to make the strongest competing cases they can while staying tied to evidence and sources."
   };
 }
 
@@ -483,13 +483,11 @@ function renderDebatePrompt(thread) {
   meta.append(
     create("strong", "thread-handle", "u/thread-starter"),
     create("span", "thread-flair", "debate prompt"),
-    create("span", "", "original post"),
-    create("span", "", "start here")
+    create("span", "", "original post")
   );
-  const label = create("span", "round-label", "Opening post");
-  const title = create("h3", "", opener.title);
+  const title = create("p", "thread-claim-line thread-claim-line-opener", opener.title);
   const body = messageParagraphs(opener.body);
-  bubble.append(meta, label, title, body);
+  bubble.append(meta, title, body);
   threadBody.append(bubble);
   card.append(avatarColumn, threadBody);
   return card;
@@ -1128,12 +1126,11 @@ function renderDebate() {
         create("span", "", round.isFollowup ? `reply ${index + 1}` : `comment ${index + 1}`),
         create("span", "", receiptCount ? `${receiptCount} receipts` : "local draft")
       );
-      const label = create("span", "round-label", round.label);
-      const title = round.title ? create("h3", "", round.title) : null;
+      const title = round.title ? create("p", "thread-claim-line", round.title) : null;
       const replyContext = round.replyContext ? create("span", "reply-context", round.replyContext) : null;
       const body = messageParagraphs(round.body);
       const actions = create("div", "thread-actions");
-      bubble.append(meta, label);
+      bubble.append(meta);
       if (replyContext) bubble.append(replyContext);
       if (title) bubble.append(title);
       bubble.append(body, actions);
@@ -1483,18 +1480,18 @@ function stanceLabel(stance) {
 function stanceOpening(agent) {
   const stance = agent.stance || "truth-seeking";
   if (stance === "pressure-first") {
-    return "I would press the room on risk tolerance: if the material facts imply a short breakout clock, diplomacy has to prove it can still constrain the program rather than simply hope it can.";
+    return "I would press the room on risk tolerance: if the material facts imply a short breakout clock, the softest people in the room should have to explain why delay is wisdom instead of denial.";
   }
   if (stance === "diplomacy-first") {
-    return "I would separate danger from authorization: advanced enrichment can be alarming while still leaving open the questions of intent, legality, inspection access, and whether force improves the outcome.";
+    return "I would separate danger from authorization: the hawks always want fear to do the argumentative work for them, and I would force them to prove force improves the outcome rather than just scratches an emotional itch.";
   }
   if (stance === "contrarian") {
-    return "I would hunt for the hidden assumption everyone is sharing, then force both coalitions to say which claim would change their mind.";
+    return "I would hunt for the hidden assumption everyone is sharing, then make both coalitions say out loud which fact would actually wreck their favorite story.";
   }
   if (stance === "expert") {
-    return "I would start by decomposing the claim into capability, stockpile location, enrichment path, weaponization, delivery, and verification confidence.";
+    return "I would start by decomposing the claim into capability, stockpile location, enrichment path, weaponization, delivery, and verification confidence, because half the room usually wants one scary noun to stand in for an entire technical chain.";
   }
-  return "I would slow the room down and turn the slogan into testable claims before letting either side score points.";
+  return "I would slow the room down and turn the slogan into testable claims before letting either side get away with theatrical certainty.";
 }
 
 function makeAgentRoomMessage(agent, reason = "joined") {
