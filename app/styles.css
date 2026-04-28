@@ -614,53 +614,24 @@ a {
 }
 
 .thread-nav-shell {
-  position: sticky;
-  top: 14px;
-  z-index: 20;
+  position: relative;
+  z-index: 10;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  padding: 12px 14px;
-  background: rgba(255, 255, 251, 0.9);
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  box-shadow: 0 10px 30px rgba(17, 23, 19, 0.08);
-  backdrop-filter: blur(16px);
-}
-
-.thread-nav-label {
-  margin: 0;
-  color: var(--muted);
-  font-size: 0.76rem;
-  font-weight: 800;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.thread-nav {
-  position: static;
-  display: flex;
-  flex-wrap: wrap;
+  justify-content: flex-start;
   gap: 8px;
-  align-items: center;
-  justify-content: flex-end;
-  flex: 1;
-  width: auto;
-  max-width: none;
-}
-
-.thread-nav .tab-button {
-  width: auto;
-  justify-content: center;
-  min-height: 42px;
-  padding: 10px 16px;
+  margin: 14px 0 22px;
+  padding: 8px;
+  background: rgba(255, 255, 251, 0.94);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  box-shadow: 0 8px 24px rgba(17, 23, 19, 0.05);
+  backdrop-filter: blur(10px);
 }
 
 .tab-button {
-  min-height: 40px;
-  padding: 9px 14px;
+  min-height: 42px;
+  padding: 10px 16px;
   color: var(--muted);
   background: transparent;
   border: 1px solid transparent;
@@ -730,14 +701,6 @@ a {
   margin: 10px 0 0;
   color: var(--muted);
   line-height: 1.6;
-}
-
-.shell[data-active-tab="topics"] .app-header {
-  display: none;
-}
-
-.shell[data-active-tab="topics"] .thread-stage-top {
-  margin-bottom: 8px;
 }
 
 .round-list,
@@ -3433,24 +3396,9 @@ a {
   }
 
   .thread-nav-shell {
-    position: static;
-    display: grid;
-    gap: 12px;
-    padding: 12px;
-  }
-
-  .thread-nav {
     display: flex;
-    flex-wrap: wrap;
     gap: 6px;
-    justify-content: flex-start;
-    width: 100%;
-  }
-
-  .thread-nav .tab-button {
-    width: auto;
-    min-height: 40px;
-    padding: 9px 14px;
+    padding: 12px;
   }
 
   .hero-stage {
@@ -3481,14 +3429,14 @@ a {
     padding-top: 10px;
   }
 
-  .thread-nav {
+  .thread-nav-shell {
     overflow-x: auto;
     flex-wrap: nowrap;
     width: calc(100% + 2px);
     padding-bottom: 2px;
   }
 
-  .thread-nav .tab-button {
+  .thread-nav-shell .tab-button {
     white-space: nowrap;
   }
 

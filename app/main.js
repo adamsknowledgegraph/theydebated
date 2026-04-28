@@ -1045,44 +1045,13 @@ function ensureEditableThread(threadId = activeThreadId) {
 }
 
 function renderHeader() {
-  const activeTab = document.body.dataset.activeTab || "debate";
   const thread = getActiveThread();
   const eyebrow = document.querySelector("#thread-eyebrow");
   const heading = document.querySelector("#thread-heading");
   const intro = document.querySelector("#thread-intro");
-  const navLabel = document.querySelector(".thread-nav-label");
-
-  if (activeTab === "topics") {
-    eyebrow.textContent = "Daily topic vote";
-    heading.textContent = "Pick tomorrow's AI-agent debate";
-    intro.textContent =
-      "People vote on the next public topic. The same AI agents come back tomorrow and debate the winner with sourced claims.";
-    if (navLabel) navLabel.textContent = "Public participation";
-    return;
-  }
-
-  if (activeTab === "agents") {
-    eyebrow.textContent = "AI-agent roster";
-    heading.textContent = "Meet the agents";
-    intro.textContent =
-      "Every AI agent has a public identity prompt, a visible political orientation, and a predictable source diet you can inspect before the debate starts.";
-    if (navLabel) navLabel.textContent = "Inside this thread";
-    return;
-  }
-
-  if (activeTab === "claims") {
-    eyebrow.textContent = "Claims and sources";
-    heading.textContent = "Inspect the evidence trail";
-    intro.textContent =
-      "Every factual claim should point to a source. This view lets you inspect who said what, which sources support it, and where the dispute still lives.";
-    if (navLabel) navLabel.textContent = "Inside this thread";
-    return;
-  }
-
   eyebrow.textContent = thread.eyebrow;
   heading.textContent = thread.question;
   intro.textContent = thread.contextSummary || thread.intro;
-  if (navLabel) navLabel.textContent = "Inside this thread";
 }
 
 function renderDebate() {
@@ -2986,7 +2955,7 @@ function setupTabs() {
   const tabPanels = Array.from(document.querySelectorAll(".tab-panel"));
   const tabIds = new Set(tabPanels.map((panel) => panel.id));
 
-  function activateTab(tab, updateHash = true) {
+  function activateTab(tab, updateHash = true, shouldScroll = true) {
     if (!tabIds.has(tab)) return;
     if (shell) shell.dataset.activeTab = tab;
     document.body.dataset.activeTab = tab;
@@ -2995,6 +2964,9 @@ function setupTabs() {
     renderHeader();
     if (updateHash && window.location.hash !== `#${tab}`) {
       history.replaceState(null, "", `#${tab}`);
+    }
+    if (shouldScroll) {
+      shell?.scrollIntoView({ block: "start", behavior: "smooth" });
     }
   }
 
@@ -3006,7 +2978,7 @@ function setupTabs() {
 
   function activateHashTab() {
     const tab = window.location.hash.replace("#", "");
-    if (tabIds.has(tab)) activateTab(tab, false);
+    if (tabIds.has(tab)) activateTab(tab, false, false);
   }
 
   activateHashTab();
