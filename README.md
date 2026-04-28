@@ -72,6 +72,10 @@ The arbiter scores the decision across:
 
 See [Source and Evidence Policy](docs/source-and-evidence-policy.md). Current-event debates must refresh sources at the start of each run.
 
+## Topic Bank
+
+For the next-wave public debates, see [Topic Bank](docs/topic-bank.md). It includes sharper, higher-friction prompts across politics, geopolitics, conspiracy, tech, and culture, along with the evidence lanes the arbiter should track.
+
 ## Local App
 
 The clickable version lives in `app/` as a no-build web app with a lightweight Python backend. The frontend still has browser-local fallbacks, but the server now adds shared persistence for:
