@@ -900,31 +900,107 @@ function boardLeaderProposal() {
   return sortedTopicProposals()[0] || null;
 }
 
+function threadDirectoryLaneKey(thread) {
+  if (["iran-flagship", "us-iran-war", "israel-palestine-right"].includes(thread.id)) return "war";
+  if (["sam-altman-elon-musk", "trump-good-person"].includes(thread.id)) return "power";
+  if (["epstein-death", "climate-hoax"].includes(thread.id)) return "conspiracy";
+  return "more";
+}
+
+function threadDirectoryLaneConfig(key) {
+  return {
+    war: {
+      label: "War & geopolitics",
+      intro: "Wars, deterrence, state violence, and whether force clarifies anything."
+    },
+    power: {
+      label: "Power & politics",
+      intro: "Elite fights, institutions, courts, and the people trying to dominate them."
+    },
+    conspiracy: {
+      label: "Conspiracy lane",
+      intro: "The threads where suspicion collides with what the record can actually prove."
+    },
+    more: {
+      label: "More threads",
+      intro: "Everything else on the public floor."
+    }
+  }[key];
+}
+
+function threadDirectoryGroups(threads) {
+  return ["war", "power", "conspiracy", "more"]
+    .map((key) => ({
+      key,
+      ...threadDirectoryLaneConfig(key),
+      threads: threads.filter((thread) => threadDirectoryLaneKey(thread) === key)
+    }))
+    .filter((group) => group.threads.length);
+}
+
+function threadSummaryLine(thread) {
+  return thread.contextSummary || thread.intro || "Three AI agents argue from public prompts and sourced claims.";
+}
+
+function threadDirectoryButton(thread, current) {
+  const button = create(
+    "button",
+    thread.id === current.id ? "primary-button" : "secondary-button",
+    thread.id === current.id ? "Reading now" : "Open thread"
+  );
+  button.type = "button";
+  button.addEventListener("click", () => {
+    setActiveThread(thread.id);
+    document.querySelector("#active-thread-anchor")?.scrollIntoView({ block: "start" });
+  });
+  return button;
+}
+
+function threadDirectoryCard(thread, current, { compact = false } = {}) {
+  const card = create("article", `thread-directory-card${thread.id === current.id ? " active" : ""}${compact ? " compact" : ""}`);
+  const eyebrow = create("h3", "", thread.title);
+  const question = create("p", "thread-directory-question", thread.question);
+  const meta = create("p", "thread-directory-stats", threadCardCompactMeta(thread));
+  card.append(eyebrow, question);
+  if (!compact) {
+    card.append(create("p", "thread-directory-summary", threadSummaryLine(thread)));
+  }
+  card.append(meta, threadDirectoryButton(thread, current));
+  return card;
+}
+
 function renderThreadDirectory() {
-  const grid = document.querySelector("#thread-directory-grid");
-  if (!grid) return;
+  const feature = document.querySelector("#thread-directory-feature");
+  const lanes = document.querySelector("#thread-directory-lanes");
+  if (!feature || !lanes) return;
 
   const current = getActiveThread();
   const threads = publicThreads();
+  const groups = threadDirectoryGroups(threads);
 
-  grid.replaceChildren(
-    ...threads.map((thread) => {
-      const card = create("article", `thread-directory-card${thread.id === current.id ? " active" : ""}`);
-      const title = create("h3", "", thread.title);
-      const question = create("p", "thread-directory-question", thread.question);
-      const meta = create("p", "thread-directory-stats", threadCardCompactMeta(thread));
-      const button = create(
-        "button",
-        thread.id === current.id ? "primary-button" : "secondary-button",
-        thread.id === current.id ? "Reading now" : "Open thread"
-      );
-      button.type = "button";
-      button.addEventListener("click", () => {
-        setActiveThread(thread.id);
-        document.querySelector("#active-thread-anchor")?.scrollIntoView({ block: "start" });
-      });
-      card.append(title, question, meta, button);
-      return card;
+  const featureCard = create("article", "thread-directory-feature-card");
+  const featureCopy = create("div", "thread-directory-feature-copy");
+  featureCopy.append(
+    create("p", "thread-directory-feature-kicker", "Live now"),
+    create("h3", "", current.title),
+    create("p", "thread-directory-question", current.question),
+    create("p", "thread-directory-summary", threadSummaryLine(current)),
+    create("p", "thread-directory-stats", threadCardMeta(current))
+  );
+  const featureActions = create("div", "thread-directory-actions");
+  featureActions.append(threadDirectoryButton(current, current));
+  featureCard.append(featureCopy, featureActions);
+  feature.replaceChildren(featureCard);
+
+  lanes.replaceChildren(
+    ...groups.map((group) => {
+      const section = create("section", "thread-directory-lane");
+      const header = create("div", "thread-directory-lane-header");
+      header.append(create("h3", "", group.label), create("p", "", group.intro));
+      const grid = create("div", "thread-directory-grid");
+      group.threads.forEach((thread) => grid.append(threadDirectoryCard(thread, current, { compact: true })));
+      section.append(header, grid);
+      return section;
     })
   );
 }
@@ -1326,6 +1402,7 @@ function communityArgumentCard(argument) {
 
 function renderCommunityArguments() {
   const root = document.querySelector("#community-argument-board");
+  const summary = document.querySelector("#community-argument-summary");
   if (!root) return;
   const thread = getActiveThread();
   const items = threadArguments(thread);
@@ -1336,10 +1413,34 @@ function renderCommunityArguments() {
   ];
 
   if (!items.length) {
+    if (summary) summary.replaceChildren();
     root.replaceChildren(
       create("p", "empty-state", "No reviewed community arguments yet. Submit a sourced case and it can be added to this debate.")
     );
     return;
+  }
+
+  if (summary) {
+    const latest = items[items.length - 1];
+    const counts = create("div", "community-argument-counts");
+    groups.forEach(([side, title]) => {
+      const chip = create("div", "community-argument-count");
+      chip.style.setProperty("--argument-color", argumentSideColor(side));
+      chip.append(
+        create("span", "community-argument-count-value", String(items.filter((argument) => argument.side === side).length)),
+        create("span", "community-argument-count-label", title)
+      );
+      counts.append(chip);
+    });
+
+    const latestCard = create("article", "community-argument-highlight");
+    latestCard.style.setProperty("--argument-color", argumentSideColor(latest.side));
+    latestCard.append(
+      create("p", "section-kicker", "Latest approved community case"),
+      create("strong", "", `${argumentSideLabel(latest.side)} · ${latest.author}`),
+      create("p", "", latest.argument)
+    );
+    summary.replaceChildren(counts, latestCard);
   }
 
   root.replaceChildren(

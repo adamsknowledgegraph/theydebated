@@ -416,8 +416,13 @@ a {
 
 .thread-directory {
   display: grid;
-  gap: 14px;
+  gap: 18px;
   padding: 10px 0 10px;
+}
+
+.thread-directory-header {
+  display: grid;
+  gap: 8px;
 }
 
 .thread-directory-header h2 {
@@ -426,6 +431,86 @@ a {
   line-height: 0.96;
   letter-spacing: -0.05em;
   font-weight: 560;
+}
+
+.thread-directory-intro {
+  max-width: 62ch;
+  margin: 0;
+  color: rgba(17, 23, 19, 0.6);
+  font-size: 0.96rem;
+  line-height: 1.55;
+}
+
+.thread-directory-feature,
+.thread-directory-lanes {
+  display: grid;
+}
+
+.thread-directory-feature-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: end;
+  padding: 20px 22px;
+  background:
+    linear-gradient(135deg, rgba(255, 249, 239, 0.96), rgba(255, 255, 251, 0.9)),
+    rgba(255, 255, 251, 0.9);
+  border: 1px solid rgba(17, 23, 19, 0.08);
+  border-radius: 22px;
+  box-shadow: var(--tight-shadow);
+}
+
+.thread-directory-feature-copy {
+  display: grid;
+  gap: 10px;
+}
+
+.thread-directory-feature-kicker {
+  margin: 0;
+  color: rgba(17, 23, 19, 0.58);
+  font-size: 0.76rem;
+  font-weight: 860;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.thread-directory-feature-card h3,
+.thread-directory-lane-header h3 {
+  margin: 0;
+  color: var(--ink);
+  font-size: clamp(1.3rem, 2.2vw, 1.8rem);
+  line-height: 1.02;
+  letter-spacing: -0.04em;
+  font-weight: 580;
+}
+
+.thread-directory-actions {
+  display: flex;
+  align-items: flex-end;
+}
+
+.thread-directory-lanes {
+  gap: 18px;
+}
+
+.thread-directory-lane {
+  display: grid;
+  gap: 12px;
+}
+
+.thread-directory-lane-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: end;
+}
+
+.thread-directory-lane-header p {
+  max-width: 46ch;
+  margin: 0;
+  color: rgba(17, 23, 19, 0.58);
+  font-size: 0.9rem;
+  line-height: 1.45;
 }
 
 .topic-vote-meta {
@@ -508,19 +593,20 @@ a {
     var(--tight-shadow);
 }
 
+.thread-directory-card.compact {
+  gap: 8px;
+  padding: 16px 16px 14px;
+}
+
 .thread-directory-card h3,
 .thread-directory-question,
-.thread-directory-stats {
+.thread-directory-stats,
+.thread-directory-summary {
   margin: 0;
 }
 
 .thread-directory-card h3 {
-  color: rgba(17, 23, 19, 0.56);
-  font-size: 0.75rem;
-  font-weight: 860;
-  letter-spacing: 0.14em;
-  line-height: 1.2;
-  text-transform: uppercase;
+  color: rgba(17, 23, 19, 0.72);
 }
 
 .thread-directory-question {
@@ -530,6 +616,23 @@ a {
   letter-spacing: -0.04em;
   line-height: 1.04;
   max-width: 15ch;
+}
+
+.thread-directory-feature-card .thread-directory-question {
+  max-width: 22ch;
+  font-size: clamp(2rem, 3vw, 2.8rem);
+}
+
+.thread-directory-card.compact .thread-directory-question {
+  max-width: 18ch;
+  font-size: clamp(1.15rem, 1.55vw, 1.35rem);
+}
+
+.thread-directory-summary {
+  max-width: 62ch;
+  color: rgba(17, 23, 19, 0.64);
+  font-size: 0.92rem;
+  line-height: 1.55;
 }
 
 .thread-directory-stats {
@@ -2107,6 +2210,63 @@ a {
   border-radius: 18px;
 }
 
+.community-argument-summary {
+  display: grid;
+  gap: 14px;
+}
+
+.community-argument-counts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.community-argument-count {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 251, 0.9);
+  border: 1px solid rgba(17, 23, 19, 0.08);
+  border-left: 4px solid var(--argument-color, var(--line));
+  border-radius: 12px;
+}
+
+.community-argument-count-value {
+  color: var(--ink);
+  font-size: 1.35rem;
+  line-height: 1;
+  font-weight: 850;
+}
+
+.community-argument-count-label {
+  color: rgba(17, 23, 19, 0.62);
+  font-size: 0.84rem;
+  font-weight: 760;
+}
+
+.community-argument-highlight {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  background: rgba(255, 255, 251, 0.94);
+  border: 1px solid rgba(17, 23, 19, 0.08);
+  border-left: 4px solid var(--argument-color, var(--line));
+  border-radius: 14px;
+}
+
+.community-argument-highlight strong,
+.community-argument-board-header h3 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 1rem;
+  line-height: 1.2;
+  font-weight: 780;
+}
+
+.community-argument-highlight p {
+  margin: 0;
+}
+
 .argument-form {
   display: grid;
   gap: 14px;
@@ -2132,6 +2292,16 @@ a {
   display: grid;
   gap: 16px;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.community-argument-board-shell {
+  display: grid;
+  gap: 14px;
+}
+
+.community-argument-board-header {
+  display: grid;
+  gap: 6px;
 }
 
 .community-argument-column {
@@ -3349,6 +3519,8 @@ a {
   .thread-stage-top,
   .app-header,
   .debate-layout,
+  .thread-directory-feature-card,
+  .thread-directory-lane-header,
   .thread-directory-grid,
   .topic-vote-layout,
   .topic-suggestion-layout,
@@ -3431,6 +3603,10 @@ a {
   .shell {
     width: min(1280px, calc(100vw - 32px));
     padding-top: 10px;
+  }
+
+  .thread-directory-question {
+    max-width: none;
   }
 
   .thread-nav-shell {
