@@ -51,6 +51,7 @@ let topicCycle = null;
 let boardState = null;
 let apiBackedState = false;
 let adminState = null;
+let remoteThreadCatalog = null;
 const conversationCache = new Map();
 const adminMode = Boolean(runtimeConfig.adminMode) || new URLSearchParams(window.location.search).has("admin");
 let claimFilters = {
@@ -239,6 +240,9 @@ async function fetchJson(url, options = {}, extras = {}) {
 }
 
 function applyBootstrapPayload(payload) {
+  if (Array.isArray(payload.threads)) {
+    ingestRemoteThreads(payload.threads);
+  }
   if (payload.topicCycle) topicCycle = payload.topicCycle;
   boardState = payload.boardState || boardState;
 
@@ -264,6 +268,31 @@ function applyBootstrapPayload(payload) {
     submittedSources = payload.submittedSources;
     saveJson(storageKeys.submittedSources, submittedSources);
   }
+}
+
+function ingestRemoteThreads(threads) {
+  remoteThreadCatalog = threads.map((thread) => ({ ...thread }));
+  threads.forEach((thread) => {
+    (thread.agents || []).forEach((agent) => {
+      if (!agent?.id || agentById.has(agent.id)) return;
+      data.agents.push(agent);
+      agentById.set(agent.id, agent);
+    });
+    (thread.sources || []).forEach((source) => {
+      if (!source?.id || sourceById.has(source.id)) return;
+      data.sources.push(source);
+      sourceById.set(source.id, source);
+    });
+    (thread.claims || []).forEach((claim) => {
+      if (!claim?.id || claimById.has(claim.id)) return;
+      data.claims.push(claim);
+      claimById.set(claim.id, claim);
+    });
+    (thread.rounds || []).forEach((round) => {
+      if (!round?.id || allDebateRounds.some((candidate) => candidate.id === round.id)) return;
+      allDebateRounds.push(round);
+    });
+  });
 }
 
 async function hydrateAdminState() {
@@ -599,11 +628,27 @@ function threadFlairFor(agent) {
 }
 
 function flagshipThreads() {
-  if (Array.isArray(data.threadCatalog) && data.threadCatalog.length) {
-    return data.threadCatalog.map((thread) => ({
+  const localCatalog = Array.isArray(data.threadCatalog)
+    ? data.threadCatalog.map((thread) => ({
       ...thread,
       rounds: (thread.rounds || []).map((round) => ({ ...round }))
-    }));
+    }))
+    : [];
+
+  if (Array.isArray(remoteThreadCatalog) && remoteThreadCatalog.length) {
+    const localById = new Map(localCatalog.map((thread) => [thread.id, thread]));
+    return remoteThreadCatalog.map((thread) => {
+      const local = localById.get(thread.id);
+      return {
+        ...(local || {}),
+        ...thread,
+        rounds: (thread.rounds?.length ? thread.rounds : local?.rounds || []).map((round) => ({ ...round }))
+      };
+    });
+  }
+
+  if (localCatalog.length) {
+    return localCatalog;
   }
 
   return [
@@ -2032,6 +2077,7 @@ async function hydrateServerState() {
     renderDebate();
     renderClaims();
     renderSources();
+    renderAgents();
     renderSubmittedSources();
   } catch {
     apiBackedState = false;

@@ -80,6 +80,7 @@ For the next-wave public debates, see [Topic Bank](docs/topic-bank.md). It inclu
 
 The clickable version lives in `app/` as a no-build web app with a lightweight Python backend. The frontend still has browser-local fallbacks, but the server now adds shared persistence for:
 
+- published thread catalog
 - topic proposals
 - topic votes
 - public round-level comments
@@ -107,6 +108,13 @@ Health check:
 curl http://localhost:3000/api/health
 ```
 
+Fetch the published thread catalog from the backend:
+
+```bash
+curl http://localhost:3000/api/threads
+curl http://localhost:3000/api/threads/sam-altman-elon-musk
+```
+
 Refresh tomorrow's vote board from the latest news feeds:
 
 ```bash
@@ -116,6 +124,14 @@ python3 refresh_topics.py
 ```
 
 The refresh script fetches current RSS headlines, rewrites three debateable topic candidates, and loads them into the active daily vote cycle. If feeds fail, it falls back to the built-in seeded topics.
+
+Export the current frontend thread catalog into the backend seed file:
+
+```bash
+node scripts/export_thread_catalog.js
+```
+
+That writes `app/thread-catalog.seed.json`, which the backend uses to seed the `published_threads` table on first boot.
 
 ## Production Shape
 
@@ -163,12 +179,15 @@ It calls `POST /api/admin/refresh-topics` once per day and can also be run manua
 
 Once the Python backend is deployed, these stop being browser-local only:
 
+- published threads and thread metadata
 - topic proposals
 - topic votes
 - public comments on debate rounds
 - submitted source queue
 - admin moderation queue
 - featured proposal / promoted tomorrow-thread override
+
+The frontend now prefers the backend thread catalog when it is available, so the public thread browser can move from hardcoded bundle state toward API-driven publishing.
 
 ### Moderation and anti-spam
 

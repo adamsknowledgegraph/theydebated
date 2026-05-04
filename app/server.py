@@ -18,6 +18,7 @@ from zoneinfo import ZoneInfo
 APP_ROOT = Path(__file__).resolve().parent
 DB_PATH = Path(os.environ.get("THEYDEBATED_DB_PATH", str(APP_ROOT / "debatebook.sqlite3"))).resolve()
 LEGACY_QUEUE_PATH = APP_ROOT / "submitted-sources.json"
+THREAD_SEED_PATH = APP_ROOT / "thread-catalog.seed.json"
 APP_TIMEZONE = ZoneInfo(os.environ.get("THEYDEBATED_TIMEZONE", "Europe/Paris"))
 ADMIN_TOKEN = os.environ.get("THEYDEBATED_ADMIN_TOKEN", "").strip()
 ALLOWED_ORIGINS = [
@@ -309,6 +310,26 @@ CREATE TABLE IF NOT EXISTS board_state (
     updated_by TEXT NOT NULL DEFAULT '',
     FOREIGN KEY (cycle_id) REFERENCES vote_cycles(id) ON DELETE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS published_threads (
+    id TEXT PRIMARY KEY,
+    slug TEXT NOT NULL,
+    title TEXT NOT NULL,
+    eyebrow TEXT NOT NULL DEFAULT '',
+    question TEXT NOT NULL,
+    intro TEXT NOT NULL DEFAULT '',
+    context_summary TEXT NOT NULL DEFAULT '',
+    verdict TEXT NOT NULL DEFAULT '',
+    refresh_date TEXT NOT NULL DEFAULT '',
+    claim_mode TEXT NOT NULL DEFAULT 'remote',
+    source_thread_id TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'published',
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    origin TEXT NOT NULL DEFAULT 'seed',
+    payload_json TEXT NOT NULL DEFAULT '{}'
+);
 """
 
 
@@ -345,6 +366,18 @@ def json_list(value):
     except (TypeError, json.JSONDecodeError):
         return []
     return parsed if isinstance(parsed, list) else []
+
+
+def json_object(value):
+    if not value:
+        return {}
+    if isinstance(value, dict):
+        return value
+    try:
+        parsed = json.loads(value)
+    except (TypeError, json.JSONDecodeError):
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
 
 
 def display_name_for_token(voter_token):
@@ -411,6 +444,52 @@ def import_legacy_source_queue(conn):
                 item.get("status", "queued"),
                 item.get("submittedBy", "legacy"),
                 item.get("moderationReason", ""),
+            ),
+        )
+
+
+def load_seed_threads():
+    if not THREAD_SEED_PATH.exists():
+        return []
+    try:
+        payload = json.loads(THREAD_SEED_PATH.read_text())
+    except json.JSONDecodeError:
+        return []
+    return payload if isinstance(payload, list) else []
+
+
+def seed_published_threads(conn):
+    count = conn.execute("SELECT COUNT(*) FROM published_threads").fetchone()[0]
+    if count:
+        return
+    now = iso_now_utc()
+    for index, thread in enumerate(load_seed_threads()):
+        payload = dict(thread)
+        payload.setdefault("sortOrder", index)
+        conn.execute(
+            """
+            INSERT OR IGNORE INTO published_threads
+                (id, slug, title, eyebrow, question, intro, context_summary, verdict, refresh_date, claim_mode, source_thread_id, status, sort_order, created_at, updated_at, origin, payload_json)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                payload.get("id"),
+                slugify(payload.get("title") or payload.get("id")),
+                payload.get("title", ""),
+                payload.get("eyebrow", ""),
+                payload.get("question", ""),
+                payload.get("intro", ""),
+                payload.get("contextSummary", ""),
+                payload.get("verdict", ""),
+                payload.get("refreshDate", ""),
+                payload.get("claimMode", "remote"),
+                payload.get("sourceThreadId", ""),
+                "published",
+                int(payload.get("sortOrder", index)),
+                now,
+                now,
+                payload.get("origin", "seed"),
+                json.dumps(payload, ensure_ascii=True),
             ),
         )
 
@@ -506,6 +585,7 @@ def ensure_db(conn):
     ensure_column(conn, "submitted_sources", "submitted_by", "TEXT NOT NULL DEFAULT ''")
     ensure_column(conn, "submitted_sources", "moderation_reason", "TEXT NOT NULL DEFAULT ''")
     import_legacy_source_queue(conn)
+    seed_published_threads(conn)
     ensure_cycle(conn)
     conn.execute(
         "DELETE FROM rate_limit_events WHERE created_at < ?",
@@ -692,10 +772,55 @@ def serialize_board_state(row):
     }
 
 
+def published_thread_rows(conn):
+    return conn.execute(
+        """
+        SELECT * FROM published_threads
+        WHERE status = 'published'
+        ORDER BY sort_order ASC, updated_at DESC
+        """
+    ).fetchall()
+
+
+def published_thread_row(conn, thread_id):
+    return conn.execute(
+        "SELECT * FROM published_threads WHERE id = ? AND status = 'published'",
+        (thread_id,),
+    ).fetchone()
+
+
+def serialize_published_thread(row):
+    payload = json_object(row["payload_json"])
+    payload.update(
+        {
+            "id": row["id"],
+            "title": row["title"],
+            "eyebrow": row["eyebrow"],
+            "question": row["question"],
+            "intro": row["intro"],
+            "contextSummary": row["context_summary"],
+            "verdict": row["verdict"],
+            "refreshDate": row["refresh_date"],
+            "claimMode": row["claim_mode"],
+            "sourceThreadId": row["source_thread_id"] or None,
+            "status": row["status"],
+            "sortOrder": row["sort_order"],
+            "origin": row["origin"],
+        }
+    )
+    payload.setdefault("agentIds", ["arbiter", "republican", "democratic"])
+    payload.setdefault("rounds", [])
+    payload.setdefault("claims", [])
+    payload.setdefault("sources", [])
+    payload.setdefault("agents", [])
+    return payload
+
+
 def build_bootstrap_payload(conn, viewer_token):
     cycle = active_cycle_row(conn)
     cycle_id = cycle["id"] if cycle else None
     return {
+        "threads": [serialize_published_thread(row) for row in published_thread_rows(conn)],
         "topicCycle": serialize_cycle(cycle),
         "viewerVote": viewer_vote_for_cycle(conn, cycle_id, viewer_token),
         "proposals": [serialize_proposal(row) for row in proposal_rows(conn, cycle_id)],
@@ -746,6 +871,7 @@ def build_admin_bootstrap(conn):
     cycle = active_cycle_row(conn)
     cycle_id = cycle["id"] if cycle else None
     return {
+        "threads": [serialize_published_thread(row) for row in published_thread_rows(conn)],
         "topicCycle": serialize_cycle(cycle),
         "boardState": serialize_board_state(board_state_row(conn, cycle_id)),
         "proposals": [serialize_proposal(row) for row in proposal_rows(conn, cycle_id, include_held=True)],
@@ -1481,6 +1607,76 @@ def clear_featured_proposal(conn, cycle_id, actor):
     conn.commit()
 
 
+def publish_placeholder_thread_from_proposal(conn, proposal, actor, note=""):
+    thread_id = f"daily-{proposal['cycle_id']}-{proposal['slug']}"
+    now = iso_now_utc()
+    payload = {
+        "id": thread_id,
+        "kind": "flagship",
+        "title": proposal["title"],
+        "eyebrow": f"AI-agent thread / {proposal['title']}",
+        "question": proposal["question"],
+        "openerTitle": f"Hot take: if this question makes everyone instantly sure, the thread probably has its teeth in exactly the right place.",
+        "openerBody": (
+            f"{proposal['why_now']}\n\n"
+            "The same three AI agents will have to take sides in public, push their evidence as far as it goes, and get punished when they blur suspicion, ideology, and proof."
+        ),
+        "intro": "Three AI agents will debate this freshly promoted topic in public from visible prompts and sourced claims.",
+        "contextSummary": proposal["why_now"] or "Tomorrow's public thread has been promoted from the vote board and is waiting for the first full debate run.",
+        "verdict": "Scheduled for the next public debate cycle.",
+        "refreshDate": today_iso_local(),
+        "claimMode": "remote",
+        "sourceThreadId": None,
+        "agentIds": ["arbiter", "republican", "democratic"],
+        "rounds": [],
+        "claims": [],
+        "sources": [],
+        "agents": [],
+        "origin": "promoted",
+        "note": note,
+    }
+    sort_order = conn.execute("SELECT COALESCE(MAX(sort_order), -1) + 1 FROM published_threads").fetchone()[0]
+    conn.execute(
+        """
+        INSERT INTO published_threads
+            (id, slug, title, eyebrow, question, intro, context_summary, verdict, refresh_date, claim_mode, source_thread_id, status, sort_order, created_at, updated_at, origin, payload_json)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'published', ?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+            title = excluded.title,
+            eyebrow = excluded.eyebrow,
+            question = excluded.question,
+            intro = excluded.intro,
+            context_summary = excluded.context_summary,
+            verdict = excluded.verdict,
+            refresh_date = excluded.refresh_date,
+            claim_mode = excluded.claim_mode,
+            source_thread_id = excluded.source_thread_id,
+            updated_at = excluded.updated_at,
+            origin = excluded.origin,
+            payload_json = excluded.payload_json
+        """,
+        (
+            thread_id,
+            proposal["slug"],
+            proposal["title"],
+            payload["eyebrow"],
+            proposal["question"],
+            payload["intro"],
+            payload["contextSummary"],
+            payload["verdict"],
+            payload["refreshDate"],
+            "remote",
+            "",
+            sort_order,
+            now,
+            now,
+            "promoted",
+            json.dumps(payload, ensure_ascii=True),
+        ),
+    )
+    return thread_id
+
+
 def promote_proposal_to_thread(conn, cycle_id, proposal_id, actor, note=""):
     proposal = conn.execute(
         "SELECT * FROM topic_proposals WHERE id = ? AND cycle_id = ? AND status = 'approved'",
@@ -1489,6 +1685,7 @@ def promote_proposal_to_thread(conn, cycle_id, proposal_id, actor, note=""):
     if not proposal:
         raise ValueError("That proposal is not available to promote.")
     now = iso_now_utc()
+    publish_placeholder_thread_from_proposal(conn, proposal, actor, note=note)
     conn.execute(
         """
         INSERT INTO board_state (cycle_id, featured_proposal_id, promoted_proposal_id, promoted_title, promoted_question, note, updated_at, updated_by)
@@ -1637,6 +1834,23 @@ class DebatebookHandler(SimpleHTTPRequestHandler):
             with db_connection() as conn:
                 ensure_db(conn)
                 self.send_json(build_bootstrap_payload(conn, viewer_token))
+            return
+
+        if parsed.path == "/api/threads":
+            with db_connection() as conn:
+                ensure_db(conn)
+                self.send_json({"threads": [serialize_published_thread(row) for row in published_thread_rows(conn)]})
+            return
+
+        if parsed.path.startswith("/api/threads/"):
+            thread_id = unquote(parsed.path.removeprefix("/api/threads/"))
+            with db_connection() as conn:
+                ensure_db(conn)
+                row = published_thread_row(conn, thread_id)
+                if not row:
+                    self.send_json({"error": "Thread not found."}, 404)
+                    return
+                self.send_json({"thread": serialize_published_thread(row)})
             return
 
         if parsed.path == "/api/admin/bootstrap":
