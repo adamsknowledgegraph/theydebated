@@ -3043,6 +3043,7 @@ function setupAdminControls() {
   const refresh = document.querySelector("#admin-refresh-topics");
   const feature = document.querySelector("#admin-feature-proposal");
   const promote = document.querySelector("#admin-promote-thread");
+  const publishWinner = document.querySelector("#admin-publish-winner");
   const clearPromoted = document.querySelector("#admin-clear-promoted");
   const tokenInput = document.querySelector("#admin-token");
   const featureSelect = document.querySelector("#admin-feature-select");
@@ -3099,6 +3100,11 @@ function setupAdminControls() {
     }
     const note = document.querySelector("#admin-note")?.value.trim() || "";
     runAdminAction("Promoting tomorrow's thread", "/api/admin/promote-thread", { proposalId, note });
+  });
+
+  publishWinner?.addEventListener("click", () => {
+    const note = document.querySelector("#admin-note")?.value.trim() || "";
+    runAdminAction("Publishing winning thread", "/api/admin/publish-winner", { note });
   });
 
   clearPromoted?.addEventListener("click", () => runAdminAction("Clearing promoted thread", "/api/admin/clear-promoted"));

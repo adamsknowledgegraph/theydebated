@@ -125,6 +125,22 @@ python3 refresh_topics.py
 
 The refresh script fetches current RSS headlines, rewrites three debateable topic candidates, and loads them into the active daily vote cycle. If feeds fail, it falls back to the built-in seeded topics.
 
+Publish the current winning topic into a real public thread:
+
+```bash
+cd app
+python3 publish_daily_thread.py
+```
+
+Or directly through the server CLI:
+
+```bash
+cd app
+python3 server.py publish-winner
+```
+
+If the winning topic matches one of the authored flagship debates, the backend publishes a fresh daily edition of that thread. Otherwise it generates a sourced first-round debate from the proposal and current source pack.
+
 Export the current frontend thread catalog into the backend seed file:
 
 ```bash
@@ -168,12 +184,15 @@ The daily topic generator can be triggered in two ways:
 - locally with `python3 app/refresh_topics.py`
 - automatically with [refresh-topics.yml](/Users/adamhome/Projects/DEBATE%20BOTS/.github/workflows/refresh-topics.yml)
 
+The daily thread publisher can also run automatically with [publish-winning-thread.yml](/Users/adamhome/Projects/DEBATE%20BOTS/.github/workflows/publish-winning-thread.yml).
+
 The GitHub Action expects these repository secrets:
 
 - `THEYDEBATED_API_BASE`
 - `THEYDEBATED_ADMIN_TOKEN`
 
 It calls `POST /api/admin/refresh-topics` once per day and can also be run manually from the Actions tab.
+The publish workflow calls `POST /api/admin/publish-winner` after voting closes.
 
 ### What is shared now
 
@@ -186,6 +205,7 @@ Once the Python backend is deployed, these stop being browser-local only:
 - submitted source queue
 - admin moderation queue
 - featured proposal / promoted tomorrow-thread override
+- automatically published daily winner threads
 
 The frontend now prefers the backend thread catalog when it is available, so the public thread browser can move from hardcoded bundle state toward API-driven publishing.
 

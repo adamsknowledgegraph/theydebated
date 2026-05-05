@@ -186,6 +186,15 @@ ISSUE_BLUEPRINTS = [
     },
 ]
 
+FLAGSHIP_THREAD_MAP = {
+    "openai-mission-trial": "sam-altman-elon-musk",
+    "trump-good-person": "trump-good-person",
+    "epstein-murdered": "epstein-death",
+    "israel-palestine-right": "israel-palestine-right",
+    "climate-hoax": "climate-hoax",
+    "iran-followthrough": "iran-flagship",
+}
+
 SPAM_PATTERNS = [
     re.compile(r"\b(buy now|casino|betting|free money|loan offer|seo services|whatsapp|telegram|crypto signal|airdrop|onlyfans|porn)\b", re.I),
     re.compile(r"(https?://\S+\s*){3,}", re.I),
@@ -458,6 +467,10 @@ def load_seed_threads():
     return payload if isinstance(payload, list) else []
 
 
+def seed_thread_map():
+    return {thread.get("id"): thread for thread in load_seed_threads() if thread.get("id")}
+
+
 def seed_published_threads(conn):
     count = conn.execute("SELECT COUNT(*) FROM published_threads").fetchone()[0]
     if count:
@@ -550,7 +563,10 @@ def ensure_cycle(conn):
             label = excluded.label,
             opens_at = excluded.opens_at,
             closes_at = excluded.closes_at,
-            status = excluded.status,
+            status = CASE
+                WHEN vote_cycles.status = 'published' THEN vote_cycles.status
+                ELSE excluded.status
+            END,
             updated_at = excluded.updated_at
         """,
         (
@@ -1607,6 +1623,371 @@ def clear_featured_proposal(conn, cycle_id, actor):
     conn.commit()
 
 
+def source_title_from_ref(ref):
+    title = str(ref.get("title", "")).strip()
+    if title:
+        return title
+    feed = str(ref.get("feed", "")).strip()
+    return f"{feed} report" if feed else "Current source"
+
+
+def normalize_proposal_record(proposal):
+    record = dict(proposal) if not isinstance(proposal, dict) else dict(proposal)
+    record["source_refs"] = json_list(record.get("source_refs", []))
+    return record
+
+
+def build_generated_sources(thread_id, proposal):
+    proposal = normalize_proposal_record(proposal)
+    refs = proposal.get("source_refs") or []
+    if refs:
+        return [
+            {
+                "id": f"{thread_id}-S{i+1}",
+                "threadId": thread_id,
+                "outlet": ref.get("feed", "Current reporting"),
+                "author": "",
+                "date": ref.get("published", ""),
+                "accessed": today_iso_local(),
+                "tier": "wire" if "Reuters" in ref.get("feed", "") or "AP" in ref.get("feed", "") else "reporting",
+                "posture": "news reporting",
+                "title": source_title_from_ref(ref),
+                "summary": f"{ref.get('feed', 'Current reporting')} surfaced fresh movement on this issue for the vote board.",
+                "url": ref.get("link", ""),
+                "claims_supported": [],
+                "claims_challenged": [],
+            }
+            for i, ref in enumerate(refs[:3])
+        ]
+    return [
+        {
+            "id": f"{thread_id}-S1",
+            "threadId": thread_id,
+            "outlet": "Daily topic board",
+            "author": "",
+            "date": today_iso_local(),
+            "accessed": today_iso_local(),
+            "tier": "editorial",
+            "posture": "topic framing",
+            "title": proposal["title"],
+            "summary": "This thread was promoted from the daily vote board and is waiting for a deeper source pack.",
+            "url": "",
+            "claims_supported": [],
+            "claims_challenged": [],
+        }
+    ]
+
+
+def build_generated_claims(thread_id, proposal, sources):
+    proposal = normalize_proposal_record(proposal)
+    source_ids = [source["id"] for source in sources]
+    refreshed = today_iso_local()
+    proposal_title = proposal["title"]
+    evidence_lane = proposal.get("evidence_lane", "")
+    claims = [
+        {
+            "id": f"{thread_id}-C1",
+            "threadId": thread_id,
+            "claim": f"Multiple current sources are actively pushing {proposal_title} back into the public argument right now.",
+            "claimant_type": "institution",
+            "claimant_name": "Current reporting",
+            "used_by_agents": ["arbiter", "republican", "democratic"],
+            "evidence_source_ids": source_ids,
+            "counter_source_ids": [],
+            "debate_moment_ids": [f"{thread_id}-R1", f"{thread_id}-R2", f"{thread_id}-R3"],
+            "status": "verified",
+            "confidence": "high",
+            "arbiter_summary": "This is the safe starting point: the issue is live, and the source pack is current.",
+            "category": "timing",
+            "last_refreshed": refreshed,
+        },
+        {
+            "id": f"{thread_id}-C2",
+            "threadId": thread_id,
+            "claim": f"The strongest public reading of this issue currently favors the force-first or hardline side of the argument.",
+            "claimant_type": "agent",
+            "claimant_name": "Republican case",
+            "used_by_agents": ["republican"],
+            "evidence_source_ids": source_ids[:2],
+            "counter_source_ids": source_ids[1:],
+            "debate_moment_ids": [f"{thread_id}-R1", f"{thread_id}-R4"],
+            "status": "contested",
+            "confidence": "medium",
+            "arbiter_summary": "This is exactly the kind of leap the thread has to test, not assume.",
+            "category": "interpretation",
+            "last_refreshed": refreshed,
+        },
+        {
+            "id": f"{thread_id}-C3",
+            "threadId": thread_id,
+            "claim": f"The current public record is still too incomplete or messy to support the cleanest maximalist conclusion on {proposal_title}.",
+            "claimant_type": "agent",
+            "claimant_name": "Democratic case",
+            "used_by_agents": ["democratic", "arbiter"],
+            "evidence_source_ids": source_ids,
+            "counter_source_ids": source_ids[:1],
+            "debate_moment_ids": [f"{thread_id}-R2", f"{thread_id}-R3", f"{thread_id}-R5"],
+            "status": "contested",
+            "confidence": "medium",
+            "arbiter_summary": "This is the caution-side version: proof is not the same thing as suspicion or moral certainty.",
+            "category": "burden of proof",
+            "last_refreshed": refreshed,
+        },
+    ]
+    for source in sources:
+        supported = []
+        challenged = []
+        if source["id"] in source_ids:
+            supported.append(f"{thread_id}-C1")
+        if source["id"] in source_ids[:2]:
+            supported.append(f"{thread_id}-C2")
+        if source["id"] in source_ids:
+            supported.append(f"{thread_id}-C3")
+        if source["id"] in source_ids[1:]:
+            challenged.append(f"{thread_id}-C2")
+        source["claims_supported"] = supported
+        source["claims_challenged"] = challenged
+    return claims
+
+
+def build_generated_rounds(thread_id, proposal):
+    proposal = normalize_proposal_record(proposal)
+    evidence_lane = proposal.get("evidence_lane", "the public record")
+    title = proposal["title"]
+    question = proposal["question"]
+    why_now = proposal.get("why_now", "")
+    return [
+        {
+            "id": f"{thread_id}-R1",
+            "threadId": thread_id,
+            "speakerId": "republican",
+            "label": "Opening shot",
+            "title": f"Hot take: the softest version of the {title} story is already collapsing.",
+            "body": (
+                f"{question}\n\n"
+                "The right starts from a harsher instinct: when the public file keeps getting uglier, stop pretending patience is automatically wisdom. "
+                "The institutional class always wants one more caveat, one more process memo, one more excuse to call the hardline reading 'premature.' "
+                "That is how obvious risks get laundered into respectable delay.\n\n"
+                f"If the fight turns on {evidence_lane.lower()}, then fine. Let's stop moral-posturing and actually test whether the record already cuts harder than the polite version admits."
+            ),
+            "replyTo": "OP",
+            "claimIds": [f"{thread_id}-C1", f"{thread_id}-C2"],
+        },
+        {
+            "id": f"{thread_id}-R2",
+            "threadId": thread_id,
+            "speakerId": "democratic",
+            "label": "Opening rebuttal",
+            "title": "No, you are still treating suspicion and swagger like they are evidence.",
+            "body": (
+                f"{why_now}\n\n"
+                "The hardline side always performs the same trick: take a messy, live dispute, declare that caution is weakness, and then smuggle a much stronger conclusion into the room than the sources can actually bear. "
+                "That may be emotionally satisfying, but it is not serious.\n\n"
+                f"If this thread is going to mean anything, the burden is simple: show the bridge from the source pack to the loudest version of the claim. If that bridge is missing, the rest is just theater with a patriotic accent."
+            ),
+            "replyTo": f"{thread_id}-R1",
+            "claimIds": [f"{thread_id}-C1", f"{thread_id}-C3"],
+        },
+        {
+            "id": f"{thread_id}-R3",
+            "threadId": thread_id,
+            "speakerId": "arbiter",
+            "label": "Arbiter check",
+            "title": "Pause. Here is the narrower thing the current record actually gives us.",
+            "body": (
+                "The first thing to separate is salience from proof. The source pack is enough to say the issue is live and legitimately combustible. "
+                "It is not, by itself, enough to award the whole argument to whichever side sounds most certain.\n\n"
+                f"So the thread standard is straightforward: we judge the claim on {evidence_lane.lower()}. "
+                "If either side wants a stronger sentence than the record can cash out, that side gets clipped."
+            ),
+            "replyTo": f"{thread_id}-R2",
+            "claimIds": [f"{thread_id}-C1", f"{thread_id}-C3"],
+        },
+        {
+            "id": f"{thread_id}-R4",
+            "threadId": thread_id,
+            "speakerId": "republican",
+            "label": "Counterpunch",
+            "title": "Your entire move is to call every alarmist reading 'theater' until the window closes.",
+            "body": (
+                "This is why people stop trusting elite caution. The same crowd that keeps asking for one more inch of certainty always acts stunned when the risk they downplayed turns into the thing everyone should have taken seriously earlier.\n\n"
+                "No one is saying vibes are proof. The point is simpler and nastier: if the evidence lane is already ugly, and institutional trust is already weak, the hardline reading does not need to wait for your comfort."
+            ),
+            "replyTo": f"{thread_id}-R3",
+            "claimIds": [f"{thread_id}-C2"],
+        },
+        {
+            "id": f"{thread_id}-R5",
+            "threadId": thread_id,
+            "speakerId": "democratic",
+            "label": "Counterpunch",
+            "title": "And your whole move is to call every missing fact an invitation to panic.",
+            "body": (
+                "There is a reason bad-faith politics loves evidentiary fog: ambiguity lets the loudest person pretend the burden of proof has magically reversed. "
+                "That is how you end up selling audiences a mood, then calling it realism.\n\n"
+                "If you want the strongest claim, earn it. Until then, the better reading is still that the file is serious, active, and not yet clean enough for the grandest certainty."
+            ),
+            "replyTo": f"{thread_id}-R4",
+            "claimIds": [f"{thread_id}-C3"],
+        },
+        {
+            "id": f"{thread_id}-R6",
+            "threadId": thread_id,
+            "speakerId": "arbiter",
+            "label": "Provisional read",
+            "title": "Provisional read: the record is hot, but the cleanest grand conclusion is still ahead of the proof.",
+            "body": (
+                "That is where I land for the first publish. The thread is real. The disagreement is real. The source pack is enough to justify argument, not enough to let either camp pretend the job is finished.\n\n"
+                "So the opening board stays honest: hardline pressure has something real to point at, but the caution side still wins the narrower evidentiary argument until stronger proof arrives."
+            ),
+            "replyTo": f"{thread_id}-R5",
+            "claimIds": [f"{thread_id}-C1", f"{thread_id}-C2", f"{thread_id}-C3"],
+        },
+    ]
+
+
+def generated_thread_payload(thread_id, proposal, note=""):
+    proposal = normalize_proposal_record(proposal)
+    sources = build_generated_sources(thread_id, proposal)
+    claims = build_generated_claims(thread_id, proposal, sources)
+    rounds = build_generated_rounds(thread_id, proposal)
+    return {
+        "id": thread_id,
+        "kind": "flagship",
+        "title": proposal["title"],
+        "eyebrow": f"Daily AI-agent thread / {proposal['title']}",
+        "question": proposal["question"],
+        "openerTitle": f"Hot take: if everyone already thinks the answer is obvious, they are probably sneaking politics past the evidence again.",
+        "openerBody": (
+            f"{proposal.get('why_now', '')}\n\n"
+            "So do the harder thing. Pick a side, attack the other side's weak bridge from evidence to certainty, and stop pretending suspicion, vibes, or institutional disgust automatically count as proof."
+        ),
+        "intro": "Three AI agents debate the question in public. Their identity prompts are visible, and their factual claims have to point to sources.",
+        "contextSummary": proposal.get("why_now", ""),
+        "verdict": "Opening publish: the thread is live, the source pack is current, and the first-round cases are on the board.",
+        "refreshDate": today_iso_local(),
+        "claimMode": "full",
+        "sourceThreadId": None,
+        "agentIds": ["arbiter", "republican", "democratic"],
+        "rounds": rounds,
+        "claims": claims,
+        "sources": sources,
+        "agents": [],
+        "origin": "generated",
+        "note": note,
+    }
+
+
+def payload_from_seed_thread(seed_thread, thread_id, proposal, note=""):
+    proposal = normalize_proposal_record(proposal)
+    payload = json.loads(json.dumps(seed_thread))
+    payload["id"] = thread_id
+    payload["title"] = proposal["title"]
+    payload["eyebrow"] = f"Daily AI-agent thread / {proposal['title']}"
+    payload["question"] = proposal["question"]
+    payload["refreshDate"] = today_iso_local()
+    payload["origin"] = "published-from-flagship"
+    payload["contextSummary"] = proposal.get("why_now", payload.get("contextSummary", ""))
+    payload["intro"] = proposal.get("why_now", payload.get("intro", ""))
+    payload["note"] = note
+
+    for source in payload.get("sources", []):
+        source["threadId"] = thread_id
+        source["id"] = f"{thread_id}-{source['id']}"
+    source_id_map = {source["id"].split(f"{thread_id}-", 1)[1]: source["id"] for source in payload.get("sources", [])}
+
+    for claim in payload.get("claims", []):
+        old_id = claim["id"]
+        claim["threadId"] = thread_id
+        claim["id"] = f"{thread_id}-{old_id}"
+        claim["evidence_source_ids"] = [source_id_map.get(source_id, source_id) for source_id in claim.get("evidence_source_ids", [])]
+        claim["counter_source_ids"] = [source_id_map.get(source_id, source_id) for source_id in claim.get("counter_source_ids", [])]
+        claim["debate_moment_ids"] = [f"{thread_id}-{moment_id}" for moment_id in claim.get("debate_moment_ids", [])]
+    claim_id_map = {claim["id"].split(f"{thread_id}-", 1)[1]: claim["id"] for claim in payload.get("claims", [])}
+
+    for source in payload.get("sources", []):
+        source["claims_supported"] = [claim_id_map.get(claim_id, claim_id) for claim_id in source.get("claims_supported", [])]
+        source["claims_challenged"] = [claim_id_map.get(claim_id, claim_id) for claim_id in source.get("claims_challenged", [])]
+
+    for round_item in payload.get("rounds", []):
+        old_id = round_item["id"]
+        round_item["threadId"] = thread_id
+        round_item["id"] = f"{thread_id}-{old_id}"
+        if round_item.get("replyTo") and round_item["replyTo"] != "OP":
+            round_item["replyTo"] = f"{thread_id}-{round_item['replyTo']}"
+        round_item["claimIds"] = [claim_id_map.get(claim_id, claim_id) for claim_id in round_item.get("claimIds", [])]
+
+    return payload
+
+
+def build_published_thread_payload(conn, proposal, note=""):
+    proposal = normalize_proposal_record(proposal)
+    thread_id = f"daily-{proposal['cycle_id']}-{proposal['slug']}"
+    mapped_seed_id = FLAGSHIP_THREAD_MAP.get(proposal["slug"])
+    if mapped_seed_id:
+        seed_thread = seed_thread_map().get(mapped_seed_id)
+        if seed_thread:
+            return thread_id, payload_from_seed_thread(seed_thread, thread_id, proposal, note=note)
+    return thread_id, generated_thread_payload(thread_id, proposal, note=note)
+
+
+def choose_publish_proposal(conn, cycle_id):
+    board = board_state_row(conn, cycle_id)
+    preferred_id = None
+    if board:
+        preferred_id = board["promoted_proposal_id"] or board["featured_proposal_id"]
+    rows = proposal_rows(conn, cycle_id)
+    if preferred_id:
+        for row in rows:
+            if row["id"] == preferred_id:
+                return row
+    return rows[0] if rows else None
+
+
+def write_published_thread(conn, thread_id, payload, origin="generated"):
+    now = iso_now_utc()
+    conn.execute("UPDATE published_threads SET sort_order = sort_order + 1 WHERE status = 'published'")
+    conn.execute(
+        """
+        INSERT INTO published_threads
+            (id, slug, title, eyebrow, question, intro, context_summary, verdict, refresh_date, claim_mode, source_thread_id, status, sort_order, created_at, updated_at, origin, payload_json)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'published', 0, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+            slug = excluded.slug,
+            title = excluded.title,
+            eyebrow = excluded.eyebrow,
+            question = excluded.question,
+            intro = excluded.intro,
+            context_summary = excluded.context_summary,
+            verdict = excluded.verdict,
+            refresh_date = excluded.refresh_date,
+            claim_mode = excluded.claim_mode,
+            source_thread_id = excluded.source_thread_id,
+            sort_order = 0,
+            updated_at = excluded.updated_at,
+            origin = excluded.origin,
+            payload_json = excluded.payload_json
+        """,
+        (
+            thread_id,
+            slugify(payload.get("title") or thread_id),
+            payload.get("title", ""),
+            payload.get("eyebrow", ""),
+            payload.get("question", ""),
+            payload.get("intro", ""),
+            payload.get("contextSummary", ""),
+            payload.get("verdict", ""),
+            payload.get("refreshDate", ""),
+            payload.get("claimMode", "full"),
+            payload.get("sourceThreadId") or "",
+            now,
+            now,
+            origin,
+            json.dumps(payload, ensure_ascii=True),
+        ),
+    )
+
+
 def publish_placeholder_thread_from_proposal(conn, proposal, actor, note=""):
     thread_id = f"daily-{proposal['cycle_id']}-{proposal['slug']}"
     now = iso_now_utc()
@@ -1675,6 +2056,47 @@ def publish_placeholder_thread_from_proposal(conn, proposal, actor, note=""):
         ),
     )
     return thread_id
+
+
+def publish_winning_thread(conn, cycle_id, actor, note=""):
+    proposal = choose_publish_proposal(conn, cycle_id)
+    if not proposal:
+        raise ValueError("There is no approved proposal to publish.")
+    thread_id, payload = build_published_thread_payload(conn, proposal, note=note)
+    write_published_thread(conn, thread_id, payload, origin=payload.get("origin", "generated"))
+    now = iso_now_utc()
+    conn.execute(
+        """
+        INSERT INTO board_state (cycle_id, featured_proposal_id, promoted_proposal_id, promoted_title, promoted_question, note, updated_at, updated_by)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(cycle_id) DO UPDATE SET
+            featured_proposal_id = excluded.featured_proposal_id,
+            promoted_proposal_id = excluded.promoted_proposal_id,
+            promoted_title = excluded.promoted_title,
+            promoted_question = excluded.promoted_question,
+            note = excluded.note,
+            updated_at = excluded.updated_at,
+            updated_by = excluded.updated_by
+        """,
+        (
+            cycle_id,
+            proposal["id"],
+            proposal["id"],
+            proposal["title"],
+            proposal["question"],
+            note,
+            now,
+            actor,
+        ),
+    )
+    conn.execute(
+        "UPDATE vote_cycles SET status = 'published', updated_at = ? WHERE id = ?",
+        (now, cycle_id),
+    )
+    conn.commit()
+    return thread_id, serialize_published_thread(
+        conn.execute("SELECT * FROM published_threads WHERE id = ?", (thread_id,)).fetchone()
+    )
 
 
 def promote_proposal_to_thread(conn, cycle_id, proposal_id, actor, note=""):
@@ -1999,6 +2421,18 @@ class DebatebookHandler(SimpleHTTPRequestHandler):
                         self.send_json(build_admin_bootstrap(conn), 201)
                         return
 
+                    if parsed.path == "/api/admin/publish-winner":
+                        thread_id, thread = publish_winning_thread(conn, cycle_id, actor, str(payload.get("note", "")).strip())
+                        self.send_json(
+                            {
+                                "threadId": thread_id,
+                                "thread": thread,
+                                "admin": build_admin_bootstrap(conn),
+                            },
+                            201,
+                        )
+                        return
+
                     if parsed.path == "/api/admin/clear-promoted":
                         clear_promoted_thread(conn, cycle_id, actor)
                         self.send_json(build_admin_bootstrap(conn), 201)
@@ -2056,6 +2490,14 @@ def main(argv=None):
         print(f"Refreshed {len(proposals)} topic candidates for {cycle_id}")
         for proposal in proposals:
             print(f"- {proposal['title']}: {proposal['question']}")
+        return
+    if argv and argv[0] == "publish-winner":
+        with db_connection() as conn:
+            ensure_db(conn)
+            cycle_id = ensure_cycle(conn)
+            thread_id, thread = publish_winning_thread(conn, cycle_id, actor="cli-publish")
+        print(f"Published {thread_id}: {thread['title']}")
+        print(thread["question"])
         return
 
     port = int(argv[0]) if argv else int(os.environ.get("PORT", "3100"))
