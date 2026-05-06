@@ -479,49 +479,6 @@ function getConversationTurns(thread = getActiveThread()) {
   return turns;
 }
 
-function debatePromptFor(thread) {
-  if (thread.openerTitle || thread.openerBody) {
-    return {
-      title: thread.openerTitle || "Hot take",
-      body: thread.openerBody || thread.contextSummary || thread.intro || thread.question
-    };
-  }
-
-  return {
-    title: `Hot take: one side of "${thread.question}" is probably leaning on rhetoric more than evidence.`,
-    body:
-      "This opening post is supposed to start a fight, not a panel discussion. Find the laziest public talking point, hit it hard, mock the shortcut, and then show your receipts.\n\nThe AI agents below are here to make the strongest competing cases they can while staying tied to evidence and sources."
-  };
-}
-
-function renderDebatePrompt(thread) {
-  const opener = debatePromptFor(thread);
-  const card = create("article", "round-card thread-opener-card");
-  card.dataset.speaker = "op";
-
-  const avatarColumn = create("div", "thread-avatar-column");
-  const avatar = create("div", "avatar thread-opener-avatar");
-  avatar.append(create("span", "avatar-initials", "OP"));
-  const vote = create("div", "thread-vote");
-  vote.append(create("span", "", "^"), create("strong", "", "241"), create("span", "", "v"));
-  avatarColumn.append(avatar, vote, create("span", "thread-line"));
-
-  const threadBody = create("div", "thread-body");
-  const bubble = create("div", "thread-bubble");
-  const meta = create("div", "thread-meta");
-  meta.append(
-    create("strong", "thread-handle", "u/thread-starter"),
-    create("span", "thread-flair", "debate prompt"),
-    create("span", "", "original post")
-  );
-  const title = create("p", "thread-claim-line thread-claim-line-opener", opener.title);
-  const body = messageParagraphs(opener.body);
-  bubble.append(meta, title, body);
-  threadBody.append(bubble);
-  card.append(avatarColumn, threadBody);
-  return card;
-}
-
 function messageParagraphs(bodyText) {
   const wrapper = create("div", "message-paragraphs");
   text(bodyText)
@@ -612,6 +569,10 @@ function speakerColor(agent) {
 }
 
 function speakerRole(agent) {
+  const id = agent?.seedId || agent?.id || "";
+  if (id === "arbiter") return "Skeptic";
+  if (id === "republican") return "Republican";
+  if (id === "democratic") return "Democrat";
   return agent?.roleTitle || agent?.archetype || "agent";
 }
 
@@ -1189,7 +1150,6 @@ function renderDebate() {
   const list = document.querySelector("#debate-rounds");
   const toolbar = document.querySelector("#thread-toolbar");
   const turns = getConversationTurns(thread);
-  const opener = renderDebatePrompt(thread);
 
   toolbar.replaceChildren(
     create("span", "", thread.kind === "flagship" ? "AI-agent debate" : "local agent room"),
@@ -1212,12 +1172,11 @@ function renderDebate() {
     );
     body.append(bubble);
     empty.append(spacer, body);
-    list.replaceChildren(opener, empty);
+    list.replaceChildren(empty);
     return;
   }
 
   list.replaceChildren(
-    opener,
     ...turns.map((round, index) => {
       const agent = getAgentProfile(round.speakerId);
       const receiptCount = round.claimIds?.length || 0;
@@ -1398,7 +1357,7 @@ function renderDebate() {
 function argumentSideLabel(side) {
   return {
     democratic: "Democrat",
-    arbiter: "Skeptic / arbiter",
+    arbiter: "Skeptic",
     republican: "Republican"
   }[side] || titleCase(side || "community");
 }
@@ -1452,7 +1411,7 @@ function renderCommunityArguments() {
   const thread = getActiveThread();
   const items = threadArguments(thread);
   const groups = [
-    ["arbiter", "Skeptic / arbiter"],
+    ["arbiter", "Skeptic"],
     ["democratic", "Democrat"],
     ["republican", "Republican"]
   ];
