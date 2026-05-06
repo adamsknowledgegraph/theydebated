@@ -416,7 +416,7 @@ a {
 
 .thread-directory {
   display: grid;
-  gap: 18px;
+  gap: 14px;
   padding: 10px 0 10px;
 }
 
@@ -441,76 +441,38 @@ a {
   line-height: 1.55;
 }
 
-.thread-directory-feature,
-.thread-directory-lanes {
-  display: grid;
+.thread-feed-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
-.thread-directory-feature-card {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 18px;
-  align-items: end;
-  padding: 20px 22px;
-  background:
-    linear-gradient(135deg, rgba(255, 249, 239, 0.96), rgba(255, 255, 251, 0.9)),
-    rgba(255, 255, 251, 0.9);
-  border: 1px solid rgba(17, 23, 19, 0.08);
-  border-radius: 22px;
+.thread-feed-filter {
+  min-height: 34px;
+  padding: 7px 12px;
+  color: rgba(17, 23, 19, 0.64);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 0.84rem;
+  font-weight: 760;
+}
+
+.thread-feed-filter:hover {
+  color: var(--ink);
+  background: rgba(17, 23, 19, 0.04);
+}
+
+.thread-feed-filter.active {
+  color: var(--ink);
+  background: rgba(255, 255, 251, 0.9);
+  border-color: rgba(17, 23, 19, 0.12);
   box-shadow: var(--tight-shadow);
 }
 
-.thread-directory-feature-copy {
-  display: grid;
-  gap: 10px;
-}
-
-.thread-directory-feature-kicker {
-  margin: 0;
-  color: rgba(17, 23, 19, 0.58);
-  font-size: 0.76rem;
-  font-weight: 860;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-}
-
-.thread-directory-feature-card h3,
-.thread-directory-lane-header h3 {
-  margin: 0;
-  color: var(--ink);
-  font-size: clamp(1.3rem, 2.2vw, 1.8rem);
-  line-height: 1.02;
-  letter-spacing: -0.04em;
-  font-weight: 580;
-}
-
-.thread-directory-actions {
-  display: flex;
-  align-items: flex-end;
-}
-
-.thread-directory-lanes {
-  gap: 18px;
-}
-
-.thread-directory-lane {
+.thread-feed-list {
   display: grid;
   gap: 12px;
-}
-
-.thread-directory-lane-header {
-  display: flex;
-  justify-content: space-between;
-  gap: 18px;
-  align-items: end;
-}
-
-.thread-directory-lane-header p {
-  max-width: 46ch;
-  margin: 0;
-  color: rgba(17, 23, 19, 0.58);
-  font-size: 0.9rem;
-  line-height: 1.45;
 }
 
 .topic-vote-meta {
@@ -570,19 +532,13 @@ a {
   gap: 14px;
 }
 
-.thread-directory-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
 .thread-directory-card {
   display: grid;
-  gap: 10px;
-  padding: 18px 18px 16px;
+  gap: 12px;
+  padding: 18px 20px;
   background: rgba(255, 255, 251, 0.88);
   border: 1px solid var(--line);
-  border-radius: 18px;
+  border-radius: 16px;
   box-shadow: var(--tight-shadow);
 }
 
@@ -593,39 +549,54 @@ a {
     var(--tight-shadow);
 }
 
-.thread-directory-card.compact {
-  gap: 8px;
-  padding: 16px 16px 14px;
-}
-
-.thread-directory-card h3,
+.thread-directory-card-title,
 .thread-directory-question,
 .thread-directory-stats,
 .thread-directory-summary {
   margin: 0;
 }
 
-.thread-directory-card h3 {
-  color: rgba(17, 23, 19, 0.72);
+.thread-directory-card-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+}
+
+.thread-directory-card-info {
+  display: grid;
+  gap: 8px;
+}
+
+.thread-directory-card-title {
+  color: rgba(17, 23, 19, 0.58);
+  font-size: 0.76rem;
+  font-weight: 860;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.thread-directory-lane-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 5px 10px;
+  color: rgba(17, 23, 19, 0.58);
+  background: rgba(17, 23, 19, 0.04);
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 820;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
 .thread-directory-question {
   color: var(--ink);
-  font-size: clamp(1.45rem, 2vw, 2rem);
+  font-size: clamp(1.45rem, 2vw, 1.95rem);
   font-weight: 600;
   letter-spacing: -0.04em;
   line-height: 1.04;
-  max-width: 15ch;
-}
-
-.thread-directory-feature-card .thread-directory-question {
-  max-width: 22ch;
-  font-size: clamp(2rem, 3vw, 2.8rem);
-}
-
-.thread-directory-card.compact .thread-directory-question {
-  max-width: 18ch;
-  font-size: clamp(1.15rem, 1.55vw, 1.35rem);
+  max-width: 21ch;
 }
 
 .thread-directory-summary {
@@ -647,6 +618,11 @@ a {
   justify-self: start;
   min-height: 40px;
   padding: 10px 15px;
+}
+
+.thread-directory-actions {
+  display: flex;
+  justify-content: flex-start;
 }
 
 .shell {
@@ -720,44 +696,41 @@ a {
   position: relative;
   z-index: 10;
   display: flex;
-  align-items: center;
   justify-content: flex-start;
-  gap: 8px;
-  margin: 14px 0 22px;
-  padding: 8px;
-  background: rgba(255, 255, 251, 0.94);
-  border: 1px solid var(--line);
-  border-radius: 18px;
-  box-shadow: 0 8px 24px rgba(17, 23, 19, 0.05);
-  backdrop-filter: blur(10px);
+  gap: 4px;
+  margin: 10px 0 22px;
+  padding: 0 0 10px;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid rgba(17, 23, 19, 0.1);
+  border-radius: 0;
+  box-shadow: none;
+  backdrop-filter: none;
 }
 
 .tab-button {
-  min-height: 42px;
-  padding: 10px 16px;
+  min-height: 36px;
+  padding: 8px 12px;
   color: var(--muted);
   background: transparent;
-  border: 1px solid transparent;
-  border-radius: 999px;
+  border: 0;
+  border-radius: 8px;
   font-weight: 780;
   box-shadow: none;
   transition:
     color 160ms ease,
     background-color 160ms ease,
-    border-color 160ms ease,
     transform 160ms ease;
 }
 
 .tab-button:hover {
   color: var(--ink);
   background: rgba(17, 23, 19, 0.04);
-  border-color: rgba(17, 23, 19, 0.06);
 }
 
 .tab-button.active {
-  color: var(--paper-strong);
-  background: var(--ink);
-  border-color: var(--ink);
+  color: var(--ink);
+  background: rgba(17, 23, 19, 0.08);
 }
 
 .tab-panel {
@@ -3519,9 +3492,6 @@ a {
   .thread-stage-top,
   .app-header,
   .debate-layout,
-  .thread-directory-feature-card,
-  .thread-directory-lane-header,
-  .thread-directory-grid,
   .topic-vote-layout,
   .topic-suggestion-layout,
   .topic-vote-shell,
@@ -3572,9 +3542,8 @@ a {
   }
 
   .thread-nav-shell {
-    display: flex;
     gap: 6px;
-    padding: 12px;
+    padding-bottom: 10px;
   }
 
   .hero-stage {
@@ -3613,11 +3582,20 @@ a {
     overflow-x: auto;
     flex-wrap: nowrap;
     width: calc(100% + 2px);
-    padding-bottom: 2px;
+    padding-bottom: 6px;
   }
 
   .thread-nav-shell .tab-button {
     white-space: nowrap;
+  }
+
+  .thread-directory-card-top {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .thread-directory-question {
+    max-width: none;
   }
 
   .landing-topbar {

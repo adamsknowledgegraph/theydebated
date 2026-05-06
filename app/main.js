@@ -52,6 +52,7 @@ let boardState = null;
 let apiBackedState = false;
 let adminState = null;
 let remoteThreadCatalog = null;
+let threadFeedFilter = "all";
 const conversationCache = new Map();
 const adminMode = Boolean(runtimeConfig.adminMode) || new URLSearchParams(window.location.search).has("admin");
 let claimFilters = {
@@ -913,35 +914,13 @@ function threadDirectoryLaneKey(thread) {
   return "more";
 }
 
-function threadDirectoryLaneConfig(key) {
-  return {
-    war: {
-      label: "War & geopolitics",
-      intro: "Wars, deterrence, state violence, and whether force clarifies anything."
-    },
-    power: {
-      label: "Power & politics",
-      intro: "Elite fights, institutions, courts, and the people trying to dominate them."
-    },
-    conspiracy: {
-      label: "Conspiracy lane",
-      intro: "The threads where suspicion collides with what the record can actually prove."
-    },
-    more: {
-      label: "More threads",
-      intro: "Everything else on the public floor."
-    }
-  }[key];
-}
-
-function threadDirectoryGroups(threads) {
-  return ["war", "power", "conspiracy", "more"]
-    .map((key) => ({
-      key,
-      ...threadDirectoryLaneConfig(key),
-      threads: threads.filter((thread) => threadDirectoryLaneKey(thread) === key)
-    }))
-    .filter((group) => group.threads.length);
+function threadFeedFilters() {
+  return [
+    { key: "all", label: "All threads" },
+    { key: "war", label: "War" },
+    { key: "power", label: "Power" },
+    { key: "conspiracy", label: "Conspiracy" }
+  ];
 }
 
 function threadSummaryLine(thread) {
@@ -962,53 +941,51 @@ function threadDirectoryButton(thread, current) {
   return button;
 }
 
-function threadDirectoryCard(thread, current, { compact = false } = {}) {
-  const card = create("article", `thread-directory-card${thread.id === current.id ? " active" : ""}${compact ? " compact" : ""}`);
-  const eyebrow = create("h3", "", thread.title);
+function threadDirectoryCard(thread, current) {
+  const card = create("article", `thread-directory-card${thread.id === current.id ? " active" : ""}`);
+  const topRow = create("div", "thread-directory-card-top");
+  const info = create("div", "thread-directory-card-info");
+  const eyebrow = create("p", "thread-directory-card-title", thread.title);
   const question = create("p", "thread-directory-question", thread.question);
   const meta = create("p", "thread-directory-stats", threadCardCompactMeta(thread));
-  card.append(eyebrow, question);
-  if (!compact) {
-    card.append(create("p", "thread-directory-summary", threadSummaryLine(thread)));
-  }
-  card.append(meta, threadDirectoryButton(thread, current));
+  const summary = create("p", "thread-directory-summary", threadSummaryLine(thread));
+  const lane = create("span", "thread-directory-lane-pill", threadFeedFilters().find((candidate) => candidate.key === threadDirectoryLaneKey(thread))?.label || "Thread");
+  const actions = create("div", "thread-directory-actions");
+
+  info.append(eyebrow, question, summary);
+  topRow.append(lane, meta);
+  actions.append(threadDirectoryButton(thread, current));
+  card.append(topRow, info, actions);
   return card;
 }
 
 function renderThreadDirectory() {
-  const feature = document.querySelector("#thread-directory-feature");
-  const lanes = document.querySelector("#thread-directory-lanes");
-  if (!feature || !lanes) return;
+  const filters = document.querySelector("#thread-feed-filters");
+  const list = document.querySelector("#thread-feed-list");
+  if (!filters || !list) return;
 
   const current = getActiveThread();
   const threads = publicThreads();
-  const groups = threadDirectoryGroups(threads);
+  const activeFilters = threadFeedFilters().filter((filter) => filter.key === "all" || threads.some((thread) => threadDirectoryLaneKey(thread) === filter.key));
+  if (!activeFilters.some((filter) => filter.key === threadFeedFilter)) {
+    threadFeedFilter = "all";
+  }
 
-  const featureCard = create("article", "thread-directory-feature-card");
-  const featureCopy = create("div", "thread-directory-feature-copy");
-  featureCopy.append(
-    create("p", "thread-directory-feature-kicker", "Live now"),
-    create("h3", "", current.title),
-    create("p", "thread-directory-question", current.question),
-    create("p", "thread-directory-summary", threadSummaryLine(current)),
-    create("p", "thread-directory-stats", threadCardMeta(current))
-  );
-  const featureActions = create("div", "thread-directory-actions");
-  featureActions.append(threadDirectoryButton(current, current));
-  featureCard.append(featureCopy, featureActions);
-  feature.replaceChildren(featureCard);
-
-  lanes.replaceChildren(
-    ...groups.map((group) => {
-      const section = create("section", "thread-directory-lane");
-      const header = create("div", "thread-directory-lane-header");
-      header.append(create("h3", "", group.label), create("p", "", group.intro));
-      const grid = create("div", "thread-directory-grid");
-      group.threads.forEach((thread) => grid.append(threadDirectoryCard(thread, current, { compact: true })));
-      section.append(header, grid);
-      return section;
+  filters.replaceChildren(
+    ...activeFilters.map((filter) => {
+      const button = create("button", `thread-feed-filter${filter.key === threadFeedFilter ? " active" : ""}`, filter.label);
+      button.type = "button";
+      button.setAttribute("aria-pressed", filter.key === threadFeedFilter ? "true" : "false");
+      button.addEventListener("click", () => {
+        threadFeedFilter = filter.key;
+        renderThreadDirectory();
+      });
+      return button;
     })
   );
+
+  const visibleThreads = threads.filter((thread) => threadFeedFilter === "all" || threadDirectoryLaneKey(thread) === threadFeedFilter);
+  list.replaceChildren(...visibleThreads.map((thread) => threadDirectoryCard(thread, current)));
 }
 
 function upsertLocalThread(nextThread) {
